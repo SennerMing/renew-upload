@@ -6,7 +6,7 @@
 #### 软件架构
 软件架构说明
 
-
+webuploader+springboot+redis+mybatis+mysql+fastdfs(服务端)+FastDFS_Client(非官网,这个客户端自带连接池)
 #### 安装教程
 
 1. xxxx
