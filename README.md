@@ -44,3 +44,30 @@ webuploader+springboot+redis+fastdfs(服务端)+FastDFS_Client(非官网,这个�
 
 ```
 
+#
+注意:文件块的大小要根据实际的需要进行设置,我们项目实际设置的是3m,如何设置可参考
+http://itindex.net/detail/49267
+
+```
+ Controller.prototype.uploader = function (pick) {
+        var accept =this.option.accept()||this.defaultAccept;
+        var runtimeOrder = this.option.runtimeOrder;
+        var flashPath = this.option.flashPath;
+        var uploadURLString = this.option.baseUrlString + this.option.uploadUrl;
+        return WebUploader.create({
+            swf: flashPath,
+            pick: pick,
+            server: uploadURLString,
+            accept: accept,
+            runtimeOrder: runtimeOrder,
+            resize: false,
+            compress: false,
+            auto:true,
+            chunkSize: 64,//1024 * 1024*3, //产品正式上线后尽量不要修改次参数,否则会影响所有上传,
+            chunked: true,
+            threads:1,
+            // auto: true,
+        });
+    };
+    
+    ```
