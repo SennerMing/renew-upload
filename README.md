@@ -19,14 +19,20 @@ webuploader+springboot+redis+fastdfs(服务端)+FastDFS_Client(非官网,这个�
 
 
 2.上传前端已封装成jquery插件,前端使用步骤
-1>页面引用
-<#include "./upload_common.ftl" />
-2>定义dom元素
+#
+1)页面引用
+`<#include "./upload_common.ftl" />`
+#
+2)定义dom元素
+```
      <div  style="" class="adhust_upload" id="user_other_documents" data-zw-upload-name="user_other_documents"
                   data-zw-upload-preview=""
                   data-zw-upload-preview-names="">
-            </div>
- 3>定义js代码
+       </div>
+```
+#     
+ 3)定义js代码
+ ```
  <script>
      //上传
      $(".adhust_upload").zwUploader({
@@ -35,4 +41,6 @@ webuploader+springboot+redis+fastdfs(服务端)+FastDFS_Client(非官网,这个�
          createUploadItem: zwblankuploader_createUploadItem,
      });
  </script>
+
+```
 
