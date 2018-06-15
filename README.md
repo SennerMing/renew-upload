@@ -63,7 +63,7 @@ http://itindex.net/detail/49267
             resize: false,
             compress: false,
             auto:true,
-            chunkSize: 64,//1024 * 1024*3, //产品正式上线后尽量不要修改次参数,否则会影响所有上传,
+            chunkSize: 64,//1024 * 1024*3, //产品正式上线后,如果redis有未完成的文件,尽量不要修改次参数,否则会影响所有未完成的上传,
             chunked: true,
             threads:1,
             // auto: true,
