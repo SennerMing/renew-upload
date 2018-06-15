@@ -50,7 +50,7 @@
         top: 3px;
     }
     .upload-progress-box .upload-progress_bg{
-        background: # rgba(3, 9, 162, 0.78);
+        background:rgba(3, 9, 162, 0.78);
         width: 0%;
         height: 100%;
         display: inline-block;
