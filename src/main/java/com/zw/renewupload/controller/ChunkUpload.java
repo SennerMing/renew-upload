@@ -70,9 +70,10 @@ public class ChunkUpload {
         BufferedOutputStream stream = null;
         String fileMd5= (String) paramMap.get("fileMd5");
         String chunk= (String) paramMap.get("chunk");
-        String chunkCurrkey= UpLoadConstant.chunkCurr+fileMd5; //redis已完成的块
+        String chunkCurrkey= UpLoadConstant.chunkCurr+fileMd5; //redis中记录当前应该穿第几块(从0开始)
         String  chunkCurr=  RedisUtil.getString(chunkCurrkey);
         String noGroupPath="";//存储在fastdfs不带组的路径
+        Integer chunkSize=Convert.toInt(paramMap.get("chunkSize"));
         if (StrUtil.isEmpty(chunkCurr)){
             return  ApiResult.fail("无法获取当前文件chunkCurr");
             // throw  new RuntimeException("无法获取当前文件chunkCurr");
@@ -81,7 +82,7 @@ public class ChunkUpload {
         Integer chunk_int=Convert.toInt(chunk);
 
 
-        if (chunk_int<=chunkCurr_int){
+        if (chunk_int<chunkCurr_int){
             return ApiResult.fail("当前文件块已上传");
         }
         //  System.out.println("***********开始**********");
@@ -100,15 +101,15 @@ public class ChunkUpload {
                                     file.getSize(), FileUtil.extName((String) paramMap.get("name")));
                             if (path== null ){
                                 RedisUtil.setString(chunkCurrkey,Convert.toStr(chunkCurr_int));
-                                return   ApiResult.fail("上传远程服务器文件出错");
+                                return   ApiResult.fail("获取远程文件路径出错");
                             }
 
                         } catch (Exception e) {
                             RedisUtil.setString(chunkCurrkey,Convert.toStr(chunkCurr_int));
-                            e.printStackTrace();
+                           // e.printStackTrace();
                             //还原历史块
                             _logger.error("初次上传远程文件出错", e);
-                            throw  new RuntimeException("初次上传远程文件出错");
+                            return   ApiResult.fail("上传远程服务器文件出错");
 
                         }
                         noGroupPath=path.getPath();
@@ -122,8 +123,9 @@ public class ChunkUpload {
                         }
 
                         try {
-                            appendFileStorageClient.appendFile(UpLoadConstant.DEFAULT_GROUP, noGroupPath, file.getInputStream(),
-                                    file.getSize());
+                            //追加方式实际实用如果中途出错多次,可能会出现重复追加情况,这里改成修改模式,即时多次传来重复文件块,依然可以保证文件拼接正确
+                            appendFileStorageClient.modifyFile(UpLoadConstant.DEFAULT_GROUP, noGroupPath, file.getInputStream(),
+                                    file.getSize(),chunkCurr_int*chunkSize);
                         } catch (Exception e) {
                             RedisUtil.setString(chunkCurrkey,Convert.toStr(chunkCurr_int));
                             _logger.error("追加远程文件出错", e);
@@ -161,7 +163,7 @@ public class ChunkUpload {
 
                 } catch (Exception e) {
                     _logger.error("上传文件错误", e);
-                    e.printStackTrace();
+                    //e.printStackTrace();
                     return ApiResult.fail("上传错误 " + e.getMessage());
                 }
             }
@@ -244,8 +246,8 @@ public class ChunkUpload {
         }else {
             //初始化锁.分块
             RedisUtil.setString(lockOwner, (String) request.getSession().getAttribute("name"));
-            RedisUtil.setString(chunkCurrkey,"-1"); //第一块索引是0,与前端保持一致
-            checkFileResult.setChunkCurr(-1);
+            RedisUtil.setString(chunkCurrkey,"0"); //第一块索引是0,与前端保持一致
+            checkFileResult.setChunkCurr(0);
             return  ApiResult.success(checkFileResult);
         }
 

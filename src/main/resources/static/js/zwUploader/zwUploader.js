@@ -12,6 +12,9 @@ ZWUP.isServerConfigLoaded = false;
 ZWUP.maxSize = 1024 * 1024 * 100;
 //uploadMap实例
 var uploadMap=new myMap();
+
+//线上文件块记录
+var chunkMap=new myMap();
 (function ($) {
 
     $.fn.extend({
@@ -27,6 +30,100 @@ var uploadMap=new myMap();
     });
 
 
+    WebUploader.Uploader.register({
+        "before-send-file": "beforeSendFile"
+        , "before-send": "beforeSend"
+    }, {
+        beforeSendFile: function(file){
+            var fileName = file.name;
+            var fileSize = file.size;
+            var file_ruid=file.id;
+            var that=this.owner.controller;
+            console.log(file);
+            //秒传验证
+            var task = new $.Deferred();
+            (new WebUploader.Uploader()).md5File(file, 0, 10*1024*1024).progress(function(percentage){
+            }).then(function(val){
+                fileMd5 = val;
+                var url = that.option.baseUrlString + that.option.checkUrl;
+                var data = {
+                    type: 0,
+                    fileName: fileName,
+                    fileMd5: fileMd5,
+                    fileSize: fileSize
+                };
+                $.ajax({
+                    type: "POST",
+                    url: url,
+                    data: data,
+                    cache: false,
+                    async: false, // 同步
+                    dataType: "json",
+                    error: function(XMLHttpRequest, textStatus, errorThrown) {
+                        file.statusText = '服务器错误';
+                        task.reject();
+
+                        var up_self=uploadMap.get(file.source.rid);
+                    }
+                }).then(function(data, textStatus, jqXHR) {
+                    if(data.code == 0) {
+
+                        if(data.data&&data.data.totalSize>0){
+                            file.statusText = '该文件已上传过';
+                            setProStyle(file,1);
+                            var up_self=uploadMap.get(that.option.uploaderId);
+                            up_self.skipFile(file);
+                            file.viewPath=data.data.viewPath;
+                            task.resolve()
+                            return
+                        }
+
+                        if(!(data.data.chunkCurr>=0)){
+                            file.statusText = '无法获取当前文件块';
+                            task.reject();
+                            return
+                        }
+                        chunkMap.put(file_ruid,{fileMd5:fileMd5,chunkCurr:data.data.chunkCurr});
+                        task.resolve();
+
+                    } else {
+                        if(data&&data.msg){
+                            alert(data.msg)
+                        }else {
+                            alert('服务器异常')
+                        }
+
+                        task.reject();
+                    }
+                });
+
+
+
+                console.log('beforeSendFile:'+val)
+                //task.resolve();
+            });
+            return $.when(task);
+        }
+        , beforeSend: function(block){
+           // var that=this.owner.controller;
+            var task = new $.Deferred();
+
+            var ruid=block.file.id;
+            var chunkCurr=chunkMap.get(ruid).chunkCurr;
+
+            if(block.chunk<chunkCurr){
+                //console.log(block)
+                task.reject();
+            }else {
+                console.log("第"+block.chunk+"块开始上传")
+                task.resolve();
+            }
+
+            return $.when(task);
+        }
+        ,
+    });
+
     var Controller = function (input, option) {
         console.log('插件input:',this);
         var flashPath = ZWUP.flashPath;
@@ -34,9 +131,12 @@ var uploadMap=new myMap();
         var previewNames = $(input).attr('data-ZW-upload-preview') || "";
         var perviewFileNames = $(input).attr('data-ZW-upload-preview-names') || "";
         this.defaultAccept = {
-            title:'jpg,jpeg,png,gif,bmp,doc,pdf,xls,xlsx,ppt',
-            extensions: 'jpg,jpeg,png,gif,bmp,doc,pdf,xls,xlsx,ppt',
-            mimeTypes: 'image/jpg,image/jpeg,image/png,image/gif,image/bmp'
+            title:'支持的文件类型',
+            extensions: 'jpg,jpeg,png,gif,bmp,doc,docx,pdf,xls,xlsx,ppt,pptx,zip,rar',
+            mimeTypes: 'image/jpg,image/jpeg,image/png,image/gif,image/bmp,application/msword,' +
+            'application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/pdf,' +
+            'application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,' +
+            'application/vnd.ms-powerpoint,application/vnd.openxmlformats-officedocument.presentationml.presentation,application/x-zip-compressed,application/x-rar-compressed'
         };
         this.input = input;
         this.option = $.extend(false, {
@@ -52,6 +152,7 @@ var uploadMap=new myMap();
             'perviewFileNames': perviewFileNames.split(","),// string
             'minItems': 1,                                  // number
             'maxItems': 20,                                 // number
+            'uploadFinishedHandler': null,                  // function 上传文件完成回调
         }, option);
 
         if (!ZWUP.isServerConfigLoaded) {
@@ -64,6 +165,21 @@ var uploadMap=new myMap();
         }
     };
 
+    //设置进度条样式
+    var setProStyle=function (file,percentage) {
+        var progressVal = Math.min(toDecimal(percentage * 100,2), 100);
+        var item=$('#item_'+file.id);
+        var  progressView=item.find('.upload-progress_bg');
+        progressView.width(progressVal+'%');
+        var  progressText=item.find('.percent');
+        progressText.text(progressVal);
+        if(percentage>=1){
+            var upload_state=item.find('.upload_state');
+            file.statusText='上传成功@'
+            var delBtn=item.find('.ZW-upload-blank-delete');
+            delBtn.show();
+        }
+    }
 
     var _loadServerConfig = function (callback, controller) {
         var configUrl = ZWUP.configUrl;
@@ -99,116 +215,6 @@ var uploadMap=new myMap();
         var $uploadContentView = that.option.createUploadBtn(that, uploaderId);
         $input.append($uploadContentView);
 
-        //线上文件块记录
-        var chunkMap=new myMap();
-        //设置进度条样式
-        var setProStyle=function (file,percentage) {
-            var progressVal = Math.min(toDecimal(percentage * 100,2), 100);
-            var item=$('#item_'+file.id);
-            var  progressView=item.find('.upload-progress_bg');
-            progressView.width(progressVal+'%');
-            var  progressText=item.find('.percent');
-            progressText.text(progressVal);
-            if(percentage>=1){
-                var upload_state=item.find('.upload_state');
-                file.statusText='上传成功@'
-                var delBtn=item.find('.ZW-upload-blank-delete');
-                delBtn.show();
-            }
-        }
-
-        WebUploader.Uploader.register({
-            "before-send-file": "beforeSendFile"
-            , "before-send": "beforeSend"
-        }, {
-            beforeSendFile: function(file){
-                var fileName = file.name;
-                var fileSize = file.size;
-                var file_ruid=file.id;
-                console.log(file);
-                //秒传验证
-                var task = new $.Deferred();
-                (new WebUploader.Uploader()).md5File(file, 0, 10*1024*1024).progress(function(percentage){
-                }).then(function(val){
-                    fileMd5 = val;
-                    var url = that.option.baseUrlString + that.option.checkUrl;
-                    var data = {
-                        type: 0,
-                        fileName: fileName,
-                        fileMd5: fileMd5,
-                        fileSize: fileSize
-                    };
-                    $.ajax({
-                        type: "POST",
-                        url: url,
-                        data: data,
-                        cache: false,
-                        async: false, // 同步
-                        dataType: "json",
-                        error: function(XMLHttpRequest, textStatus, errorThrown) {
-                            file.statusText = '服务器错误';
-                            task.reject();
-
-                            var up_self=uploadMap.get(file.source.rid);
-                        }
-                    }).then(function(data, textStatus, jqXHR) {
-                        if(data.code == 0) {
-
-                            if(data.data&&data.data.totalSize>0){
-                                file.statusText = '该文件已上传过';
-                                setProStyle(file,1);
-                                var up_self=uploadMap.get(that.option.uploaderId);
-                                up_self.skipFile(file);
-                                file.viewPath=data.data.viewPath;
-                                task.resolve()
-                                return
-                            }
-
-                            if(!data.data.chunkCurr){
-                                file.statusText = '无法获取当前文件块';
-                                task.reject();
-                                return
-                            }
-                            chunkMap.put(file_ruid,{fileMd5:fileMd5,chunkCurr:data.data.chunkCurr});
-                            task.resolve();
-
-                        } else {
-                            if(data&&data.msg){
-                                alert(data.msg)
-                            }else {
-                                alert('服务器异常')
-                            }
-
-                            task.reject();
-                        }
-                    });
-
-
-
-                    console.log('beforeSendFile:'+val)
-                    //task.resolve();
-                });
-                return $.when(task);
-            }
-            , beforeSend: function(block){
-
-                var task = new $.Deferred();
-
-                var ruid=block.file.id;
-                var chunkCurr=chunkMap.get(ruid).chunkCurr;
-
-                if(block.chunk<=chunkCurr){
-                    //console.log(block)
-                    task.reject();
-                }else {
-                    console.log("第"+block.chunk+"块开始上传")
-                    task.resolve();
-                }
-
-                return $.when(task);
-            }
-            ,
-        });
 
         var _uploader = this.uploader("#" + uploaderId);
         _uploader.controller = that;
@@ -231,6 +237,7 @@ var uploadMap=new myMap();
         _uploader.on( 'uploadBeforeSend', function( block, data ) {
 
             data.fileMd5 = chunkMap.get(block.file.id).fileMd5;
+            data.chunkSize=block.blob.size;
 
         });
 
@@ -285,8 +292,12 @@ var uploadMap=new myMap();
             var item=$('#item_'+file.id);
             item.find('.upload_state').text(file.statusText);
             //经过传输的file,即时在uploadAccept绑定viewPath,这里也接收不到
-            item.find('.itme_file_url').val(file.viewPath||resp.data||'');
+            item.find('.item_file_url').val(file.viewPath||resp.data||'');
             item.find('.zw-upload-blank-view').show();
+
+            if(  this.controller.option.uploadFinishedHandler){
+                this.controller.option.uploadFinishedHandler(item);
+            }
 
         });
 
@@ -303,9 +314,6 @@ var uploadMap=new myMap();
 
         var fileId=file.id;
         console.log("fileIdxxx:"+fileId);
-        if (this.option.uploadFinishedHandler != null) {
-            this.option.uploadFinishedHandler(fileUrl, file, fileId, this.input);
-        }
         var fileName = this.option.fileName;
         var contentView = $(this.input);
         var fileUrlWithHost = ZWUP.fileServerUrl + fileUrl;
@@ -340,7 +348,7 @@ var uploadMap=new myMap();
             resize: false,
             compress: false,
             auto:true,
-            chunkSize: 64,//1024 * 1024*3, //产品正式上线后尽量不要修改次参数,否则会影响所有上传,
+            chunkSize: 1024 * 1024*3, //产品正式上线后尽量不要修改次参数,否则会影响所有上传,
             chunked: true,
             threads:1,
             // auto: true,
@@ -395,6 +403,11 @@ function myMap() {
 
     //向MAP中增加元素（key, value)
     this.put = function(_key, _value) {
+        var exist=this.containsKey(_key);
+        if(exist){
+            this.remove(_key);
+        }
+
         this.elements.push({
             key: _key,
             value: _value
@@ -440,7 +453,7 @@ function myMap() {
 
     //判断MAP中是否含有指定KEY的元素
     this.containsKey = function(_key) {
-        varbln = false;
+        var bln = false;
         try {
             for(i = 0; i < this.elements.length; i++) {
                 if(this.elements[i].key == _key) {

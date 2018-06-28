@@ -18,7 +18,8 @@
 <script src="/js/jquery-3.2.1.min.js"></script>
 <#include "./upload_common.ftl" />
 
-
+<div>
+</div>
 
 
 <script>
@@ -27,5 +28,9 @@
         accept: zwblankuploader_accept, //可以上传文件类型,一般用组件默认即可
         createUploadBtn: zwblankuploader_createUploadBtn,
         createUploadItem: zwblankuploader_createUploadItem,
+        uploadFinishedHandler:function (item) {
+            console.log('回调:',item.find('.item_file_url').val())
+        }
+        
     });
 </script>

@@ -75,7 +75,7 @@
         var delItemString = controller.option.isReadonly ? '' : "<a   fileId="+file.id+"   data-id='" + fileId + "' class='zw-upload-blank-delete'  >删除</a>";
         var $item = $("<div id='item_" + fileId + "' class='zw-upload-item zw-document-uploader-item'>" +
                 "<div class='zw-upload-blank-file'>" + indexItemString + file.name + "</div>" +
-                "<input type='hidden' name='"+ fileName +"' class='itme_file_url'>"+
+                "<input type='hidden' name='"+ fileName +"' class='item_file_url'>"+
                 "<div class='upload-progress-box'><span class='upload-progress'><span class='upload-progress_bg'></span></span> <span class='percent'>0</span><span>%</span> </div>"+
                 delItemString +
                 "<span class='upload_state' style='margin-left: 10px'>等待上传</span>"+
@@ -103,7 +103,7 @@
     });
 
     $(document).on('click','.zw-upload-blank-view',function () {
-        var openurl=$(this).parents('.zw-document-uploader-item').find('.itme_file_url').val();
+        var openurl=$(this).parents('.zw-document-uploader-item').find('.item_file_url').val();
         window.open(ZWUP.fileServerUrl+openurl);
     })
 
