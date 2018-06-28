@@ -12,6 +12,8 @@ webuploader+springboot+redis+fastdfs(服务端)+FastDFS_Client(非官网,这个�
 
 2.配置好application.properties地址运行项目即可
 
+####项目运行截图
+[输入链接说明](https://blog.csdn.net/zw521cx/article/details/80704026)
 
 #### 使用说明
 
