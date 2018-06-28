@@ -25,7 +25,7 @@ webuploader+springboot+redis+fastdfs(服务端)+FastDFS_Client(非官网,这个�
 #
 2)定义dom元素
 ```
-     <div  style="" class="adhust_upload" id="user_other_documents" data-zw-upload-name="user_other_documents"
+     <div  style="" class="" id="user_other_documents" data-zw-upload-name="user_other_documents"
                   data-zw-upload-preview=""
                   data-zw-upload-preview-names="">
        </div>
@@ -35,11 +35,16 @@ webuploader+springboot+redis+fastdfs(服务端)+FastDFS_Client(非官网,这个�
  ```
  <script>
      //上传
-     $(".adhust_upload").zwUploader({
-         accept: zwblankuploader_accept, //可以上传文件类型,一般用组件默认即可
-         createUploadBtn: zwblankuploader_createUploadBtn,
-         createUploadItem: zwblankuploader_createUploadItem,
-     });
+        //上传
+        $("#user_other_documents").zwUploader({
+            accept: zwblankuploader_accept, //可以上传文件类型,一般用组件默认即可
+            createUploadBtn: zwblankuploader_createUploadBtn,
+            createUploadItem: zwblankuploader_createUploadItem,
+            uploadFinishedHandler:function (item) {
+                console.log('上传服务器路径:',item.find('.item_file_url').val())
+            }
+            
+        });
  </script>
 
 ```
@@ -72,4 +77,7 @@ http://itindex.net/detail/49267
     
 ```
 #
+
+#其他说明请看 重要说明 文件
+
 ![欢迎大家加入java底层技术研究qq群](http://s4.sinaimg.cn/mw690/002TBhfnzy7l5TCkmdl33&690 "欢迎大家加入java底层技术研究qq群")
