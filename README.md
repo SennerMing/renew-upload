@@ -70,4 +70,6 @@ http://itindex.net/detail/49267
         });
     };
     
-    ```
+```
+#
+![欢迎大家加入java底层技术研究qq群](http://s4.sinaimg.cn/mw690/002TBhfnzy7l5TCkmdl33&690 "欢迎大家加入java底层技术研究qq群")
