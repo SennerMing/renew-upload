@@ -80,6 +80,6 @@ http://itindex.net/detail/49267
 ```
 #
 
-#其他说明请看 重要说明 文件
+#其他说明请看 [重要说明](https://gitee.com/zwlan/renewFastdfs/blob/master/重要说明) 文件
 
 ![欢迎大家加入java底层技术研究qq群](http://s4.sinaimg.cn/mw690/002TBhfnzy7l5TCkmdl33&690 "欢迎大家加入java底层技术研究qq群")
