@@ -27,7 +27,7 @@ webuploader+springboot+redis+fastdfs(服务端)+FastDFS_Client(非官网,这个�
 #
 2)定义dom元素
 ```
-     <div  style="" class="" id="user_other_documents" data-zw-upload-name="user_other_documents"
+     <div  style="" class="adhust_upload" id="user_other_documents" data-zw-upload-name="user_other_documents"
                   data-zw-upload-preview=""
                   data-zw-upload-preview-names="">
        </div>
