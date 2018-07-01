@@ -262,10 +262,10 @@ var chunkMap=new myMap();
             {
                 result= JSON.parse(response._raw)
                 if(result.code==1){
-                    file.statusText=result.msg;
-                    file.viewPath='';
+                    file.file.statusText=result.msg;
+                    file.file.viewPath='';
                 }else {
-                    file.viewPath=result.data
+                    file.file.viewPath=result.data
                     return true
                 }
 
@@ -348,7 +348,7 @@ var chunkMap=new myMap();
             resize: false,
             compress: false,
             auto:true,
-            chunkSize: 1024 * 1024*3, //产品正式上线后尽量不要修改次参数,否则会影响所有上传,
+            chunkSize: 1024 * 1024*10, //产品正式上线后尽量不要修改次参数,否则会影响所有上传,
             chunked: true,
             threads:1,
             // auto: true,
