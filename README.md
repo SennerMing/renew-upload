@@ -55,6 +55,8 @@ webuploader+springboot+redis+fastdfs(服务端)+FastDFS_Client(非官网,这个�
 注意:文件块的大小要根据实际的需要进行设置,我们项目实际设置的是3m,如何设置可参考
 http://itindex.net/detail/49267
 
+
+#下面代码段是本项目中文件分片大小设置的地方
 ```
  Controller.prototype.uploader = function (pick) {
         var accept =this.option.accept()||this.defaultAccept;
@@ -82,6 +84,6 @@ http://itindex.net/detail/49267
 
 #其他说明请看 [重要说明](https://gitee.com/zwlan/renewFastdfs/blob/master/重要说明) 文件
 
-![欢迎大家加入java底层技术研究qq群](http://s4.sinaimg.cn/mw690/002TBhfnzy7l5TCkmdl33&690 "欢迎大家加入java底层技术研究qq群")
+![欢迎大家加入java底层架构技术研究qq群](http://s4.sinaimg.cn/mw690/002TBhfnzy7l5TCkmdl33&690 "欢迎大家加入java底层技术研究qq群")
 
-欢迎大家加入java底层技术研究qq群: 304101674
+欢迎大家加入java底层架构技术研究qq群: 304101674
