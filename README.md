@@ -84,6 +84,7 @@ http://itindex.net/detail/49267
 
 #其他说明请看 [重要说明](https://gitee.com/zwlan/renewFastdfs/blob/master/重要说明) 文件
 
-![欢迎大家加入java底层架构技术研究qq群](http://s4.sinaimg.cn/mw690/002TBhfnzy7l5TCkmdl33&690 "欢迎大家加入java底层技术研究qq群")
+![欢迎大家加入java底层架构技术研究qq群](https://images.gitee.com/uploads/images/2019/0702/120905_8660b4c3_906208.png "欢迎大家加入java底层技术研究qq群")
 
 欢迎大家加入java底层架构技术研究qq群: 304101674
+<a target="_blank" href="//shang.qq.com/wpa/qunwpa?idkey=bbe9c65a531d4e38c294a3c17fe1930426f6d76b55f39c55f933fac5b982fd51"><img border="0" src="//pub.idqqimg.com/wpa/images/group.png" alt="Java架构底层核心技术" title="Java架构底层核心技术"></a>
