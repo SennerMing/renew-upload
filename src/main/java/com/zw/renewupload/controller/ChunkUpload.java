@@ -109,6 +109,14 @@ public class ChunkUpload {
                 if (!file.isEmpty()) {
                     try {
 
+
+                        //获取已经上传文件大小
+                        Long historyUpload=0L;
+                        String historyUploadStr= RedisUtil.getString(UpLoadConstant.historyUpload+fileMd5);
+                        if (StrUtil.isNotEmpty(historyUploadStr)){
+                            historyUpload=Convert.toLong(historyUploadStr);
+                        }
+                        _logger.debug("historyUpload大小:"+historyUpload);
                         if (chunk_int==0){
 
                             RedisUtil.setString(chunkCurrkey,Convert.toStr(chunkCurr_int+1));
@@ -144,7 +152,7 @@ public class ChunkUpload {
                             try {
                                 //追加方式实际实用如果中途出错多次,可能会出现重复追加情况,这里改成修改模式,即时多次传来重复文件块,依然可以保证文件拼接正确
                                 appendFileStorageClient.modifyFile(UpLoadConstant.DEFAULT_GROUP, noGroupPath, file.getInputStream(),
-                                        file.getSize(),chunkCurr_int*chunkSize);
+                                        file.getSize(),historyUpload);
                                 _logger.debug(chunk+":更新完fastdfs");
                             } catch (Exception e) {
                                 RedisUtil.setString(chunkCurrkey,Convert.toStr(chunkCurr_int));
@@ -156,6 +164,11 @@ public class ChunkUpload {
 
 
                         }
+
+
+                        //修改历史上传大小
+                        historyUpload=historyUpload+file.getSize();
+                        RedisUtil.setString(UpLoadConstant.historyUpload+fileMd5,Convert.toStr(historyUpload));
 
                         //最后一块,清空upload,写入数据库
 

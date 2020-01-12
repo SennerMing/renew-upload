@@ -53,6 +53,9 @@
                             <th>上传路径</td>
                             <th>md5</td>
                             <th>大小</td>
+                            <th>大小(kb)</td>
+                            <th>大小(m)</td>
+                            <th>大小(g)</td>
                             <th>操作</td>
                         </tr>
 
@@ -62,7 +65,12 @@
                                 <td>${e.name}</td>
                                 <td>${e.url}</td>
                                 <td>${e.md5}</td>
+                                <td>${e.lenght}</td>
                                 <td>${(e.lenght/1024)?string('#.##')}KB</td>
+                                <td>${(e.lenght/1024/1024)?string('#.##')}M</td>
+                                <td>${(e.lenght/1024/1024/1024)?string('#.##')}G</td>
+
+
                                 <td>
                                     <a target="_blank" href="http://${fileServerUrl}/${e.url}">查看</a>
                                     <a  class="del" style="margin-left: 10px" md5="${e.md5}">删除</a>
