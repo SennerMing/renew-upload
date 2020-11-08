@@ -53,6 +53,7 @@ public class ChunkUpload {
 
         String noGroupPath;//存储在fastdfs不带组的路径
         String fileMd5= (String) paramMap.get("fileMd5");
+        //继续上传刚删除的文件，要加锁来阻止其上传,否则会出现丢块问题
         String chunklockName=UpLoadConstant.chunkLock+fileMd5;
 
         String temOwner= RandomUtil.randomUUID();
@@ -71,34 +72,42 @@ public class ChunkUpload {
             if (!paramMap.containsKey("chunks")){
                 paramMap.put("chunks","1");
             }
-
+            //通过Uploading+lock:+chunkLock:+（前端传来的File MD5）+1，加指定值 ,key 不存在时候会设置 key,并认为原来的 value 是 0
             Long lock= RedisUtil.incrBy(chunklockName,1);
             if (lock>1){
                 return ApiResult.fail("请求块锁失败");
             }
 
-            //写入锁的当前拥有者
+            //到这，说明没人使用过这个chunklockName上传过文件，并写入锁的当前拥有者
             currOwner=true;
-
+            //开始接收前端上传的文件
             List<MultipartFile> files = ((MultipartHttpServletRequest) request).getFiles("file");
             MultipartFile file = null;
             BufferedOutputStream stream = null;
+
             String chunk= (String) paramMap.get("chunk");
-            String chunkCurrkey= UpLoadConstant.chunkCurr+fileMd5; //redis中记录当前应该穿第几块(从0开始)
+            //Uploading+file:+chunkCurr:+（前端传来的File MD5）
+            String chunkCurrkey= UpLoadConstant.chunkCurr+fileMd5; //redis中记录当前文件应该穿第几块(从0开始)
+            //通过这个Key去redis去获取当前上传文件块的标识
             String  chunkCurr=  RedisUtil.getString(chunkCurrkey);
             noGroupPath = "";
+            //上传块大小
             Integer chunkSize=Convert.toInt(paramMap.get("chunkSize"));
+            //如果redis中当前块标识为null
             if (StrUtil.isEmpty(chunkCurr)){
                 return  ApiResult.fail("无法获取当前文件chunkCurr");
                 // throw  new RuntimeException("无法获取当前文件chunkCurr");
             }
+            //从redis中获取的上传文件块的标识
             Integer chunkCurr_int=Convert.toInt(chunkCurr);
+            //前端传来的当前上传文件块的标识
             Integer chunk_int=Convert.toInt(chunk);
 
-
+            //如果前端的文件块标识比当前redis中的小
             if (chunk_int<chunkCurr_int){
                 return ApiResult.fail("当前文件块已上传");
             }else if (chunk_int>chunkCurr_int){
+                //主要是重试上传
                 return ApiResult.fail("当前文件块需要等待上传,稍后请重试");
             }
             //  System.out.println("***********开始**********");
@@ -112,20 +121,24 @@ public class ChunkUpload {
 
                         //获取已经上传文件大小
                         Long historyUpload=0L;
+                        //historyUpload:+(前端传来的fileMD5) 去数据库中获得历史上传大小
                         String historyUploadStr= RedisUtil.getString(UpLoadConstant.historyUpload+fileMd5);
                         if (StrUtil.isNotEmpty(historyUploadStr)){
                             historyUpload=Convert.toLong(historyUploadStr);
                         }
                         _logger.debug("historyUpload大小:"+historyUpload);
+                        //如果从来没上传过
                         if (chunk_int==0){
-
+                            //chunkCurrkey=Uploading+file:+chunkCurr:+（前端传来的File MD5）,0+1
                             RedisUtil.setString(chunkCurrkey,Convert.toStr(chunkCurr_int+1));
-                            _logger.debug(chunk+":redis块+1");
+                            _logger.debug(chunk+":redis块+1");//0+":redis块+1"
                             try {
+                                //第一次上传文件获得文件路径
                                 path = appendFileStorageClient.uploadAppenderFile(UpLoadConstant.DEFAULT_GROUP, file.getInputStream(),
                                         file.getSize(), FileUtil.extName((String) paramMap.get("name")));
                                 _logger.debug(chunk+":更新完fastdfs");
                                 if (path== null ){
+                                    //上传失败后，将chunkCurrkey=Uploading+file:+chunkCurr:+（前端传来的File MD5） 设置为 0
                                     RedisUtil.setString(chunkCurrkey,Convert.toStr(chunkCurr_int));
                                     return   ApiResult.fail("获取远程文件路径出错");
                                 }
@@ -139,11 +152,14 @@ public class ChunkUpload {
 
                             }
                             noGroupPath=path.getPath();
+                            //fastDfsPath=Uploading:+file:+fastDfsPath:（前端传来的File MD5）
                             RedisUtil.setString(UpLoadConstant.fastDfsPath+fileMd5,path.getPath());
                             _logger.debug("上传文件 result={}", path);
                         }else {
+                            //不是第一次上传
                             RedisUtil.setString(chunkCurrkey,Convert.toStr(chunkCurr_int+1));
                             _logger.debug(chunk+":redis块+1");
+                            //fastDfsPath=Uploading:+file:+fastDfsPath:（前端传来的File MD5）
                             noGroupPath=RedisUtil.getString(UpLoadConstant.fastDfsPath+fileMd5);
                             if (noGroupPath== null ){
                                 return   ApiResult.fail("无法获取上传远程服务器文件出错");
@@ -168,6 +184,7 @@ public class ChunkUpload {
 
                         //修改历史上传大小
                         historyUpload=historyUpload+file.getSize();
+                        //historyUpload:+（前端传来的File MD5）
                         RedisUtil.setString(UpLoadConstant.historyUpload+fileMd5,Convert.toStr(historyUpload));
 
                         //最后一块,清空upload,写入数据库
@@ -175,18 +192,20 @@ public class ChunkUpload {
                         String  fileName=  (String) paramMap.get("name");
                         Long size=Convert.toLong(paramMap.get("size"));
                         Integer chunks_int=Convert.toInt(paramMap.get("chunks"));
+                        //当前上传块标识+1等于文件块总数
                         if (chunk_int+1==chunks_int){
-
+                            //最后一块了
                             //持久化上传完成文件,也可以存储在mysql中
 
                             FileResult fileResult=new FileResult();
                             fileResult.setMd5(fileMd5);
                             fileResult.setName(fileName);
                             fileResult.setLenght(size);
+                            //默认group
                             fileResult.setUrl(UpLoadConstant.DEFAULT_GROUP+"/"+noGroupPath);
-
+                            //redis完成列表信息加入redis中（Uploading:+completedList）
                             RedisUtil.rpush(UpLoadConstant.completedList, JSONUtil.toJsonStr(fileResult));
-
+                            //清除redis中上传信息
                             RedisUtil.delKeys(new String[]{UpLoadConstant.chunkCurr+fileMd5,
                                     UpLoadConstant.fastDfsPath+fileMd5,
                                     UpLoadConstant.currLocks+fileMd5,
