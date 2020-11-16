@@ -21,6 +21,12 @@ public class UploadManage {
 
     @Autowired
     private AppendFileStorageClient storageClient;
+
+    /**
+     * 登录过后第一个调用的接口，获取用户上传列表，文件服务器地址
+     * @param request
+     * @return
+     */
     @RequestMapping("/upload_list")
     public String upload_list(HttpServletRequest request){
         //从redis上获取已完成的文件,实际项目可以存储在mysql中,
@@ -30,7 +36,6 @@ public class UploadManage {
             for (String e:fileList){
                 JSONObject jsonObject= JSONUtil.parseObj(e);
                 jsonObjects.add(jsonObject);
-
             }
         }
         request.setAttribute("fileServerUrl",ReadProper.getResourceValue("fileServerUrl"));
