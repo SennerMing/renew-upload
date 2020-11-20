@@ -19,6 +19,9 @@ public class UpLoadConstant {
     //当前文件上传到fastdfs路径
     public final static String fastDfsPath=file+"fastDfsPath:";
 
+    //fastdfs的group地址
+    public final static String fastGroupPath = file+"fastDfsGroup:";
+
     //默认分组
     public final static  String DEFAULT_GROUP = "group1";
 
