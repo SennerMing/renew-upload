@@ -12,6 +12,7 @@ import com.github.tobato.fastdfs.service.AppendFileStorageClient;
 import com.zw.renewupload.append.DefectiveAppendFileStorageClient;
 import com.zw.renewupload.append.FileRedisUtil;
 import com.zw.renewupload.common.*;
+import com.zw.renewupload.task.TaskExecutor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -36,6 +37,12 @@ public class ChunkUpload {
 
     @Autowired
     private DefectiveAppendFileStorageClient defectiveClient;
+
+
+    //自动装配 线程测试类
+    @Autowired
+    private TaskExecutor taskExecutor;
+
 
     protected Logger _logger = LoggerFactory.getLogger(this.getClass());
     //获取配置
@@ -445,7 +452,11 @@ public class ChunkUpload {
             MultipartFile[] multipartFiles = new MultipartFile[fileRedisUtil.getChunks()];
             multipartFiles[chunk] = file;
             md5_filestrem_map.put(fileRedisUtil.getFileMd5(),multipartFiles);
-
+            try {
+                taskExecutor.run(fileRedisUtil);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
         }else{
             MultipartFile[] multipartFiles = md5_filestrem_map.get(fileRedisUtil.getFileMd5());
             multipartFiles[chunk] = file;
