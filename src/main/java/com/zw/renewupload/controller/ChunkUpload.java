@@ -13,6 +13,7 @@ import com.zw.renewupload.append.DefectiveAppendFileStorageClient;
 import com.zw.renewupload.append.FileRedisUtil;
 import com.zw.renewupload.common.*;
 import com.zw.renewupload.task.TaskExecutor;
+import lombok.extern.slf4j.Slf4j;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -28,6 +29,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+@Slf4j
 @CrossOrigin
 @Controller
 @RequestMapping("/upload/chunkUpload")
@@ -38,13 +40,10 @@ public class ChunkUpload {
     @Autowired
     private DefectiveAppendFileStorageClient defectiveClient;
 
-
     //自动装配 线程测试类
     @Autowired
     private TaskExecutor taskExecutor;
-
-
-    protected Logger _logger = LoggerFactory.getLogger(this.getClass());
+    
     //获取配置
     /**
      * 用户在文件管理页面点击进入上传页面调用的接口，又获取了一边文件服务器地址
@@ -136,17 +135,17 @@ public class ChunkUpload {
                         if (StrUtil.isNotEmpty(historyUploadStr)){
                             historyUpload=Convert.toLong(historyUploadStr);
                         }
-                        _logger.debug("historyUpload大小:"+historyUpload);
+                        log.debug("historyUpload大小:"+historyUpload);
                         //如果从来没上传过
                         if (chunk_int==0){
                             //chunkCurrkey=Uploading+file:+chunkCurr:+（前端传来的File MD5）,0+1
                             RedisUtil.setString(chunkCurrkey,Convert.toStr(chunkCurr_int+1));
-                            _logger.debug(chunk+":redis块+1");//0+":redis块+1"
+                            log.debug(chunk+":redis块+1");//0+":redis块+1"
                             try {
                                 //第一次上传文件获得文件路径
                                 path = appendFileStorageClient.uploadAppenderFile(UpLoadConstant.DEFAULT_GROUP, file.getInputStream(),
                                         file.getSize(), FileUtil.extName((String) paramMap.get("name")));
-                                _logger.debug(chunk+":更新完fastdfs");
+                                log.debug(chunk+":更新完fastdfs");
                                 if (path== null ){
                                     //上传失败后，将chunkCurrkey=Uploading+file:+chunkCurr:+（前端传来的File MD5） 设置为 0
                                     RedisUtil.setString(chunkCurrkey,Convert.toStr(chunkCurr_int));
@@ -156,17 +155,17 @@ public class ChunkUpload {
                                 RedisUtil.setString(chunkCurrkey,Convert.toStr(chunkCurr_int));
                                // e.printStackTrace();
                                 //还原历史块
-                                _logger.error("初次上传远程文件出错", e);
+                                log.error("初次上传远程文件出错", e);
                                 return   ApiResult.fail("上传远程服务器文件出错");
                             }
                             noGroupPath=path.getPath();
                             //fastDfsPath=Uploading:+file:+fastDfsPath:（前端传来的File MD5）
                             RedisUtil.setString(UpLoadConstant.fastDfsPath+fileMd5,path.getPath());
-                            _logger.debug("上传文件 result={}", path);
+                            log.debug("上传文件 result={}", path);
                         }else {
                             //不是第一次上传
                             RedisUtil.setString(chunkCurrkey,Convert.toStr(chunkCurr_int+1));
-                            _logger.debug(chunk+":redis块+1");
+                            log.debug(chunk+":redis块+1");
                             //fastDfsPath=Uploading:+file:+fastDfsPath:（前端传来的File MD5）
                             noGroupPath=RedisUtil.getString(UpLoadConstant.fastDfsPath+fileMd5);
                             if (noGroupPath== null ){
@@ -176,10 +175,10 @@ public class ChunkUpload {
                                 //追加方式实际实用如果中途出错多次,可能会出现重复追加情况,这里改成修改模式,即时多次传来重复文件块,依然可以保证文件拼接正确
                                 appendFileStorageClient.modifyFile(UpLoadConstant.DEFAULT_GROUP, noGroupPath, file.getInputStream(),
                                         file.getSize(),historyUpload);
-                                _logger.debug(chunk+":更新完fastdfs");
+                                log.debug(chunk+":更新完fastdfs");
                             } catch (Exception e) {
                                 RedisUtil.setString(chunkCurrkey,Convert.toStr(chunkCurr_int));
-                                _logger.error("更新远程文件出错", e);
+                                log.error("更新远程文件出错", e);
                              //   e.printStackTrace();
                               //  throw  new RuntimeException("初次上传远程文件出错");
                                 return ApiResult.fail("更新远程文件出错");
@@ -216,7 +215,7 @@ public class ChunkUpload {
                             });
                         }
                     } catch (Exception e) {
-                        _logger.error("上传文件错误", e);
+                        log.error("上传文件错误", e);
                         //e.printStackTrace();
                         return ApiResult.fail("上传错误 " + e.getMessage());
                     }
@@ -319,6 +318,80 @@ public class ChunkUpload {
     }
 
 
+//    @PostMapping("/upload")
+//    @ResponseBody
+//    ApiResult upload(@RequestParam Map<String, Object> paramMap, HttpServletRequest request) throws IOException {
+//        String fileMd5 = (String) paramMap.get("fileMd5");
+//        if (StrUtil.isEmpty(fileMd5)){
+//            return ApiResult.fail("fileMd5不能为空");
+//        }
+//        CheckFileResult checkFileResult = new CheckFileResult();
+//        //模拟从mysql中查询文件表的md5,这里从redis里查询
+//        List<String> fileList = RedisUtil.getListAll(UpLoadConstant.completedList);
+//        if (CollUtil.isNotEmpty(fileList)){
+//            for (String e:fileList){
+//                JSONObject obj=JSONUtil.parseObj(e);
+//                if (obj.get("md5").equals(fileMd5)){
+//                    checkFileResult.setTotalSize(obj.getLong("lenght"));
+//                    checkFileResult.setViewPath(obj.getStr("url"));
+//                    return ApiResult.success(checkFileResult);
+//                }
+//            }
+//        }
+//
+//        //查询锁占
+//        String lockName=UpLoadConstant.currLocks+fileMd5;
+//        Long lock= RedisUtil.incrBy(lockName,1);
+//        String lockOwner=UpLoadConstant.lockOwner+ fileMd5;
+//        String chunkCurrkey=UpLoadConstant.chunkCurr+fileMd5;
+//        //不是第一次上传
+//        if (lock>1){
+//            checkFileResult.setLock(1);
+//            //检查是否为锁的拥有者,如果是放行
+//            String oWner= RedisUtil.getString(lockOwner);
+//            if (StrUtil.isEmpty(oWner)){
+//                return ApiResult.fail("无法获取文件锁拥有者");
+//            }else {
+////              判断这个owner是不是登录的用户
+//                if (oWner.equals(oWner)){
+//                    //如果是就获得这个当前上传的chunk index是多少，默认是个0
+//                    String chunkCurr = RedisUtil.getString(chunkCurrkey);
+//                    if (StrUtil.isEmpty(chunkCurr)){
+//                        return ApiResult.fail("无法获取当前文件chunkCurr");
+//                    }
+//                    checkFileResult.setChunkCurr(Convert.toInt(chunkCurr));
+//                    return ApiResult.success(checkFileResult);
+//                }else {
+//                    return ApiResult.fail("当前文件已有人在上传,您暂无法上传该文件");
+//                }
+//            }
+//        }else {
+//
+//            //初始化锁.分块
+//            RedisUtil.setString(lockOwner, lockOwner);
+//            RedisUtil.setString(chunkCurrkey,"0"); //第一块索引是0,与前端保持一致
+//            checkFileResult.setChunkCurr(0);
+////            return  ApiResult.success(checkFileResult);
+//            //暂时只考虑一次成功问题
+//
+//            paramMap.put("name", paramMap.get("fileName"));
+//            paramMap.put("size", paramMap.get("fileSize"));
+//            int chunk = 0;
+//            if(paramMap.get("chunk") != null){
+//                if(paramMap.get("chunk").toString().trim().length()!=0){
+//                    chunk = Integer.parseInt(paramMap.get("chunk").toString().trim());
+//                    chunk-=1;
+//                }
+//            }
+//            paramMap.put("chunk", String.valueOf(chunk));
+//            return upload_do(paramMap, request);
+//        }
+//
+//    }
+
+
+    public static Map<String,MultipartFile[]> md5_filestrem_map = new HashMap<>();//[key:文件的MD5码，value:文件有序的二进制流数组]
+
     @PostMapping("/upload")
     @ResponseBody
     ApiResult upload(@RequestParam Map<String, Object> paramMap, HttpServletRequest request) throws IOException {
@@ -340,58 +413,9 @@ public class ChunkUpload {
             }
         }
 
-        //查询锁占
-        String lockName=UpLoadConstant.currLocks+fileMd5;
-        Long lock= RedisUtil.incrBy(lockName,1);
-        String lockOwner=UpLoadConstant.lockOwner+ fileMd5;
-        String chunkCurrkey=UpLoadConstant.chunkCurr+fileMd5;
-        //不是第一次上传
-        if (lock>1){
-            checkFileResult.setLock(1);
-            //检查是否为锁的拥有者,如果是放行
-            String oWner= RedisUtil.getString(lockOwner);
-            if (StrUtil.isEmpty(oWner)){
-                return ApiResult.fail("无法获取文件锁拥有者");
-            }else {
-//              判断这个owner是不是登录的用户
-                if (oWner.equals(oWner)){
-                    //如果是就获得这个当前上传的chunk index是多少，默认是个0
-                    String chunkCurr = RedisUtil.getString(chunkCurrkey);
-                    if (StrUtil.isEmpty(chunkCurr)){
-                        return ApiResult.fail("无法获取当前文件chunkCurr");
-                    }
-                    checkFileResult.setChunkCurr(Convert.toInt(chunkCurr));
-                    return ApiResult.success(checkFileResult);
-                }else {
-                    return ApiResult.fail("当前文件已有人在上传,您暂无法上传该文件");
-                }
-            }
-        }else {
-
-            //初始化锁.分块
-            RedisUtil.setString(lockOwner, lockOwner);
-            RedisUtil.setString(chunkCurrkey,"0"); //第一块索引是0,与前端保持一致
-            checkFileResult.setChunkCurr(0);
-//            return  ApiResult.success(checkFileResult);
-            //暂时只考虑一次成功问题
-
-            paramMap.put("name", paramMap.get("fileName"));
-            paramMap.put("size", paramMap.get("fileSize"));
-            int chunk = 0;
-            if(paramMap.get("chunk") != null){
-                if(paramMap.get("chunk").toString().trim().length()!=0){
-                    chunk = Integer.parseInt(paramMap.get("chunk").toString().trim());
-                    chunk-=1;
-                }
-            }
-            paramMap.put("chunk", String.valueOf(chunk));
-            return upload_do(paramMap, request);
-        }
-
+        return importSeq(paramMap,request);
     }
 
-
-    public static volatile Map<String,MultipartFile[]> md5_filestrem_map = new HashMap<>();//[key:文件的MD5码，value:文件有序的二进制流数组]
 
     /**
      * @Auther LXR
@@ -421,8 +445,22 @@ public class ChunkUpload {
          *        如果不是1，则将该文件流放入对应的[MultipartFile[chunk-1]]
          *        开启一个新的线程去处理这个[md5_filestream_map]中[fileMd5]的[MultipartFile[]]
          *
+         *  2020年11月20日10点11分对大体思路进行实现时遇到了很多问题，上传文件功能与[是否为当前可上传块]的耦合太严重
+         *  实现中出现重复判断，所以有将缓存与上传功能分离的想法。
+         *
          * 思路整理：
-         *     暂未进行优化
+         *     2020年11月21日10点17分
+         *     思路一：
+         *     1.无论数据是否为当前可以写入，都先将当前[chunk]的[MultipartFile]存入[md5_filestream_map]中
+         *     2.用异步线程的方式去处理[md5_filestrem_map]中的[MultipartFile]
+         *
+         *     思路二：
+         *     不使用异步线程
+         *     1.同上
+         *     2.调用上传函数[uploadLoop()]，该函数的主要功能与异步线程的执行主体大致相同
+         *
+         *     思路一与思路二存在的差异：
+         *     效率方面，暂且以为异步线程的方式效率高一些，还有待验证
          *
          * Q&A：
          *     Q:当前请求的append操作会不会与独立线程中的append操作冲突
@@ -432,16 +470,16 @@ public class ChunkUpload {
          */
         String fileName = (String) paramMap.get("fileName");
         String fileMd5 = (String) paramMap.get("fileMd5");
-        Integer chunks = (Integer) paramMap.get("chunks");
-        Integer chunk = ((Integer) paramMap.get("chunk"))-1;
-        Long fileSize = (Long) paramMap.get("fileSize");
-        Long chunkSize = (Long) paramMap.get("chunkSize");
+        Integer chunks = Integer.parseInt((String) paramMap.get("chunks"));
+        Integer chunk = Integer.parseInt(((String) paramMap.get("chunk")))-1;
+        Long fileSize = Long.parseLong((String)paramMap.get("fileSize")) ;
+        Long chunkSize = Long.parseLong((String)paramMap.get("chunkSize"));
 
         List<MultipartFile> files = ((MultipartHttpServletRequest) request).getFiles("file");
         MultipartFile file = null;
         if(files.size() > 0){
             files.get(0);
-            _logger.info("上传文件的个数为："+files.size());
+            log.info("上传文件的个数为："+files.size());
         }else{
             return ApiResult.fail("没有上传任何文件！");
         }
@@ -462,17 +500,11 @@ public class ChunkUpload {
             multipartFiles[chunk] = file;
         }
 
-        return null;
+        return ApiResult.success();
     }
-
-
 
     public static void main(String args[]){
-
         System.out.println(ApiResult.fail().getCode());
-
     }
-
-
 
 }

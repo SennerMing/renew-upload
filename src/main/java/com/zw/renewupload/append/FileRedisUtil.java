@@ -121,7 +121,6 @@ public class FileRedisUtil {
      * 初始化上传File在redis中的信息
      */
     public void initFileRedisInfo(String groupPath,String noGroupPath){
-        this.setCurrentChunk(0);
         this.setGroupPath(groupPath);
         this.setNoGroupPath(noGroupPath);
     }
@@ -135,6 +134,7 @@ public class FileRedisUtil {
         this.incrCurrentChunk();
         this.updateUploadedSize();
     }
+
 
     /**
      * 完成上传
@@ -152,7 +152,7 @@ public class FileRedisUtil {
         //清除redis中上传信息
         RedisUtil.delKeys(new String[]{UpLoadConstant.chunkCurr+fileMd5,
                 UpLoadConstant.fastDfsPath+fileMd5,
-                UpLoadConstant.currLocks+fileMd5
+                UpLoadConstant.fastGroupPath+fileMd5
         });
     }
 
