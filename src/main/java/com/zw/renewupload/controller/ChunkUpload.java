@@ -21,10 +21,11 @@ import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.multipart.MultipartHttpServletRequest;
+import org.springframework.web.multipart.support.StandardMultipartHttpServletRequest;
+import sun.security.provider.MD5;
 
 import javax.servlet.http.HttpServletRequest;
-import java.io.BufferedOutputStream;
-import java.io.IOException;
+import java.io.*;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -394,6 +395,7 @@ public class ChunkUpload {
 
 
     public static Map<String,MultipartFile[]> md5_filestrem_map = new HashMap<>();//[key:文件的MD5码，value:文件有序的二进制流数组]
+    public static Map<String,String[]> md5_chunkpath_map = new HashMap<>();//[key:文件的MD5码，value:文件有序的二进制流数组]
 
     @PostMapping("/upload")
     @ResponseBody
@@ -471,7 +473,9 @@ public class ChunkUpload {
         Long chunkSize = Long.parseLong((String)paramMap.get("chunkSize"));
 
         List<MultipartFile> files = ((MultipartHttpServletRequest) request).getFiles("file");
+
         MultipartFile file = null;
+
         if(files.size() > 0){
             file = files.get(0);
             log.info("上传文件的个数为："+files.size());
@@ -481,15 +485,47 @@ public class ChunkUpload {
 
         Future future = null;
 
+        /**
+         * 新增代码开始：将文件转存到自己指定的地方
+         */
+        String chunkFilePath = null;
+        try {
+            chunkFilePath = tmpMdbFile(file.getInputStream(),FileUtil.extName(fileName)+chunk+".tmp");
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        /**
+         * 新增代码结束：将文件转存到自己指定的地方
+         */
+
         FileRedisUtil fileRedisUtil = new FileRedisUtil(fileMd5,fileName,fileSize,chunks,chunk,chunkSize);
+        log.info(String.valueOf(JSONUtil.parse(fileRedisUtil)));
+
         if(md5_filestrem_map.get(fileRedisUtil.getFileMd5()) == null){
+
+            /*Tomcat指定临时路径代码
             MultipartFile[] multipartFiles = new MultipartFile[fileRedisUtil.getChunks()];
             multipartFiles[chunk] = file;
-            md5_filestrem_map.put(fileRedisUtil.getFileMd5(),multipartFiles);
+            md5_filestrem_map.put(fileRedisUtil.getFileMd5(),multipartFiles);*/
+
+            /**
+             * 新增代码开始：将文件转存到自己指定的地方
+             */
+            String[] multipartFiles = new String[fileRedisUtil.getChunks()];
+            multipartFiles[chunk] = chunkFilePath;
+            md5_chunkpath_map.put(fileRedisUtil.getFileMd5(),multipartFiles);
+            /**
+            * 新增代码开始：将文件转存到自己指定的地方
+            */
+
             try {
                 future = taskExecutor.run(fileRedisUtil);
                 try {
-                    return ApiResult.success(future.get());
+                    if(future == null){
+                        return ApiResult.success("UpLoading");
+                    }else{
+                        return ApiResult.success(future.get());
+                    }
                 } catch (ExecutionException e) {
                     e.printStackTrace();
                 }
@@ -497,12 +533,11 @@ public class ChunkUpload {
                 e.printStackTrace();
             }
         }else{
-            MultipartFile[] multipartFiles = md5_filestrem_map.get(fileRedisUtil.getFileMd5());
-            multipartFiles[chunk] = file;
+            /*MultipartFile[] multipartFiles = md5_filestrem_map.get(fileRedisUtil.getFileMd5());
+            multipartFiles[chunk] = file;*/
+            String[] multipartFiles = md5_chunkpath_map.get(fileRedisUtil.getFileMd5());
+            multipartFiles[chunk] = chunkFilePath;
         }
-
-
-
         return ApiResult.success();
     }
 
@@ -510,6 +545,23 @@ public class ChunkUpload {
         System.out.println(ApiResult.fail().getCode());
     }
 
+    public String tmpMdbFile(InputStream is, String fileName) {
+        File dest = new File("D:\\tomcattmp" + System.currentTimeMillis() + "_" + fileName);
+        saveFile(is, dest);
+        return dest.getAbsolutePath();
+    }
+
+    private void saveFile(InputStream is, File dest) {
+        try(FileOutputStream fos = new FileOutputStream(dest)) {
+            int len;
+            byte[] buffer = new byte[1024];
+            while ((len = is.read(buffer)) != -1) {
+                fos.write(buffer, 0, len);
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
 
 
 
