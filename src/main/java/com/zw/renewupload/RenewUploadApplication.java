@@ -4,10 +4,14 @@ import com.github.tobato.fastdfs.FdfsClientConfig;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.autoconfigure.data.jpa.JpaRepositoriesAutoConfiguration;
+import org.springframework.boot.web.servlet.MultipartConfigFactory;
 import org.springframework.boot.web.servlet.ServletComponentScan;
+import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.EnableMBeanExport;
 import org.springframework.context.annotation.Import;
 import org.springframework.jmx.support.RegistrationPolicy;
+
+import javax.servlet.MultipartConfigElement;
 
 
 @ServletComponentScan
@@ -21,4 +25,11 @@ public class RenewUploadApplication {
 	public static void main(String[] args) {
 		SpringApplication.run(RenewUploadApplication.class, args);
 	}
+
+//	@Bean
+//	MultipartConfigElement multipartConfigElement() {
+//		MultipartConfigFactory factory = new MultipartConfigFactory();
+//		factory.setLocation("D:\\tomcattmp");
+//		return factory.createMultipartConfig();
+//	}
 }

@@ -402,7 +402,7 @@ public class RedisUtil {
         List list=null;
         try {
             jo = getJedis();
-            list=    jo.lrange(key,0,-1);
+            list= jo.lrange(key,0,-1);
         } catch (Exception e) {
             threadLocalJedis.set(null);
             e.printStackTrace();
