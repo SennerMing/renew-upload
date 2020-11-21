@@ -5,6 +5,7 @@ import com.github.tobato.fastdfs.domain.StorePath;
 import com.zw.renewupload.append.DefectiveAppendFileStorageClient;
 import com.zw.renewupload.append.FileRedisUtil;
 import com.zw.renewupload.common.ApiResult;
+import com.zw.renewupload.common.CheckFileResult;
 import com.zw.renewupload.controller.ChunkUpload;
 import lombok.extern.slf4j.Slf4j;
 import org.slf4j.Logger;
@@ -147,7 +148,7 @@ public class TaskExecutor {
      * @throws InterruptedException
      */
     @Async("taskExecutor")
-    public Future<String> run(FileRedisUtil fileRedisUtil) throws InterruptedException {
+    public Future<CheckFileResult> run(FileRedisUtil fileRedisUtil) throws InterruptedException {
         /**
          *
          * 如果获取到的当前块是-1（说明Redis还未做初始化工作）
@@ -218,8 +219,8 @@ public class TaskExecutor {
             }
         }
         ApiResult checkResult = FileRedisUtil.isCompleted(fileRedisUtil.getFileMd5());
-
-        return new AsyncResult<String>(checkResult.getMsg());
+        CheckFileResult chekFileResult = (CheckFileResult)checkResult.getData();
+        return new AsyncResult<CheckFileResult>(chekFileResult);
     }
 
 }
