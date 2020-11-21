@@ -100,6 +100,7 @@ public class TaskExecutor {
             if(multipartFiles[currentChunk] == null){
                 continue;
             }else{
+                file = multipartFiles[currentChunk];
                 fileRedisUtil.setChunkSize(file.getSize());
             }
             try {
@@ -128,7 +129,7 @@ public class TaskExecutor {
                 log.error(e.getMessage());
             }
 
-            if(fileRedisUtil.getCurrentChunk() == fileRedisUtil.getChunks()-1){
+            if(fileRedisUtil.getCurrentChunk() == fileRedisUtil.getChunks()){
                 fileRedisUtil.upLoadFinished();
                 break;
             }

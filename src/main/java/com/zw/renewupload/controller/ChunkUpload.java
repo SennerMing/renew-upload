@@ -478,7 +478,7 @@ public class ChunkUpload {
         List<MultipartFile> files = ((MultipartHttpServletRequest) request).getFiles("file");
         MultipartFile file = null;
         if(files.size() > 0){
-            files.get(0);
+            file = files.get(0);
             log.info("上传文件的个数为："+files.size());
         }else{
             return ApiResult.fail("没有上传任何文件！");
