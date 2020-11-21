@@ -27,7 +27,7 @@ public class TaskExecutor {
     //为Hello类方法设置异步调用的配置类
     @Async("taskExecutor")
     public void run(FileRedisUtil fileRedisUtil) throws InterruptedException {
-        
+
         MultipartFile file = ChunkUpload.md5_filestrem_map.get(fileRedisUtil.getFileMd5())[fileRedisUtil.getChunk()];
         try {
             String groupPath = "";
