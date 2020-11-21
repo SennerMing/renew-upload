@@ -1,12 +1,14 @@
 package com.zw.renewupload.append;
 
+import cn.hutool.core.collection.CollUtil;
 import cn.hutool.core.convert.Convert;
 import cn.hutool.core.util.StrUtil;
+import cn.hutool.json.JSONObject;
 import cn.hutool.json.JSONUtil;
-import com.zw.renewupload.common.FileResult;
-import com.zw.renewupload.common.RedisUtil;
-import com.zw.renewupload.common.UpLoadConstant;
+import com.zw.renewupload.common.*;
 import org.springframework.stereotype.Component;
+
+import java.util.List;
 
 /**
  * @ClassName: FileRedisPath
@@ -136,6 +138,8 @@ public class FileRedisUtil {
     }
 
 
+
+
     /**
      * 完成上传
      *      将完成上传文件的信息记录到Redis中
@@ -146,7 +150,7 @@ public class FileRedisUtil {
         fileResult.setName(fileName);
         fileResult.setLenght(fileSize);
         //默认group
-        fileResult.setUrl(getGroupPath()+getNoGroupPath());
+        fileResult.setUrl(getGroupPath()+"/"+getNoGroupPath());
         //redis完成列表信息加入redis中（Uploading:+completedList）
         RedisUtil.rpush(UpLoadConstant.completedList, JSONUtil.toJsonStr(fileResult));
         //清除redis中上传信息
@@ -154,6 +158,33 @@ public class FileRedisUtil {
                 UpLoadConstant.fastDfsPath+fileMd5,
                 UpLoadConstant.fastGroupPath+fileMd5
         });
+    }
+
+    /**
+     * 报错时清空redis中历史信息
+     */
+    public void clearHistory(){
+        RedisUtil.delKeys(new String[]{UpLoadConstant.chunkCurr+fileMd5,
+                UpLoadConstant.fastDfsPath+fileMd5,
+                UpLoadConstant.fastGroupPath+fileMd5
+        });
+    }
+
+    public static ApiResult isCompleted(String fileMd5){
+        CheckFileResult checkFileResult = new CheckFileResult();
+        //模拟从mysql中查询文件表的md5,这里从redis里查询
+        List<String> fileList = RedisUtil.getListAll(UpLoadConstant.completedList);
+        if (CollUtil.isNotEmpty(fileList)){
+            for (String e:fileList){
+                JSONObject obj=JSONUtil.parseObj(e);
+                if (obj.get("md5").equals(fileMd5)){
+                    checkFileResult.setTotalSize(obj.getLong("lenght"));
+                    checkFileResult.setViewPath(obj.getStr("url"));
+                    return ApiResult.success(checkFileResult);
+                }
+            }
+        }
+        return ApiResult.fail();
     }
 
     private String fileName;
@@ -210,6 +241,8 @@ public class FileRedisUtil {
     public void setChunk(Integer chunk) {
         this.chunk = chunk;
     }
+
+
 
     public FileRedisUtil(String fileMd5, String fileName, Long fileSize, Integer chunks, Integer chunk,Long chunkSize) {
         this.fileMd5 = fileMd5;

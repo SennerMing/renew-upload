@@ -25,9 +25,12 @@ import org.springframework.web.multipart.MultipartHttpServletRequest;
 import javax.servlet.http.HttpServletRequest;
 import java.io.BufferedOutputStream;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Future;
 
 @Slf4j
 @CrossOrigin
@@ -399,18 +402,9 @@ public class ChunkUpload {
         if (StrUtil.isEmpty(fileMd5)){
             return ApiResult.fail("fileMd5不能为空");
         }
-        CheckFileResult checkFileResult = new CheckFileResult();
-        //模拟从mysql中查询文件表的md5,这里从redis里查询
-        List<String> fileList = RedisUtil.getListAll(UpLoadConstant.completedList);
-        if (CollUtil.isNotEmpty(fileList)){
-            for (String e:fileList){
-                JSONObject obj=JSONUtil.parseObj(e);
-                if (obj.get("md5").equals(fileMd5)){
-                    checkFileResult.setTotalSize(obj.getLong("lenght"));
-                    checkFileResult.setViewPath(obj.getStr("url"));
-                    return ApiResult.success(checkFileResult);
-                }
-            }
+        ApiResult checkReuslt = FileRedisUtil.isCompleted(fileMd5);
+        if("0".equals(checkReuslt.getCode())){
+            return checkReuslt;
         }
 
         return importSeq(paramMap,request);
@@ -468,6 +462,7 @@ public class ChunkUpload {
          *       而独立线程中的append操作，虽然也在轮询该chunk，但是 md5_filestrem_map中该MD5对应的MultipartFile[chunk-1]为空,
          *       不进行入库操作
          */
+
         String fileName = (String) paramMap.get("fileName");
         String fileMd5 = (String) paramMap.get("fileMd5");
         Integer chunks = Integer.parseInt((String) paramMap.get("chunks"));
@@ -484,14 +479,20 @@ public class ChunkUpload {
             return ApiResult.fail("没有上传任何文件！");
         }
 
-        FileRedisUtil fileRedisUtil = new FileRedisUtil(fileMd5,fileName,fileSize,chunks,chunk,chunkSize);
+        Future future = null;
 
+        FileRedisUtil fileRedisUtil = new FileRedisUtil(fileMd5,fileName,fileSize,chunks,chunk,chunkSize);
         if(md5_filestrem_map.get(fileRedisUtil.getFileMd5()) == null){
             MultipartFile[] multipartFiles = new MultipartFile[fileRedisUtil.getChunks()];
             multipartFiles[chunk] = file;
             md5_filestrem_map.put(fileRedisUtil.getFileMd5(),multipartFiles);
             try {
-                taskExecutor.run(fileRedisUtil);
+                future = taskExecutor.run(fileRedisUtil);
+                try {
+                    return ApiResult.success(future.get());
+                } catch (ExecutionException e) {
+                    e.printStackTrace();
+                }
             } catch (InterruptedException e) {
                 e.printStackTrace();
             }
@@ -500,11 +501,16 @@ public class ChunkUpload {
             multipartFiles[chunk] = file;
         }
 
+
+
         return ApiResult.success();
     }
 
     public static void main(String args[]){
         System.out.println(ApiResult.fail().getCode());
     }
+
+
+
 
 }
