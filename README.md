@@ -6,7 +6,7 @@
 
 为什么要做这个东西呢？因为没有钱嘛，没钱一定要做嘛！
 
-<img src="https://github.com/SennerMing/renew-upload/blob/master/images/spirit.jpg" alt="精神领袖" style="text-align:center;zoom:33%;" />
+<div align=center><img src="https://github.com/SennerMing/renew-upload/blob/master/images/spirit.jpg" alt="精神领袖" style="text-align:center;zoom:33%;" /></div>
 
 我们公司的后端存储工具为FastDFS，关于这个存储工具小明百度过，比较适合小文件就类似于抖音小视频的那种，好像有一种说法是5M到500M之间，没仔细阅读过官方文档不是很懂，总之就是不适合大文件的上传。之前我们公司的一些个老哥，写过一个基于此的文件上传接口，在实际应用当中，有些不听话的用户就反馈啦：哎呀，我上传1个G的文件，怎么传着传着莫名其妙的就失败了，而且我再上传，这个小东西都不做上传记录的，还要重新开始，真的是太难用、太浪费时间了！
 
