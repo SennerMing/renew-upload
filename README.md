@@ -2,9 +2,44 @@
 
 该项目是对gitee名为令狐大侠老哥的[renew_upload](https://gitee.com/zwlan/renewFastdfs)项目进行改造的，感谢这位好大哥提供的解决方案。
 
+如果看不见我千辛万苦搜集或者制作的图片，请参考以下操作步骤（本人mac试过了，可行👍）：
+
+MacOS：
+
+​	sudo vim /etc/hosts
+
+​	按i键，在末尾添加：
+
+```text
+# GitHub Start 
+192.30.253.112    Build software better, together 
+192.30.253.119    gist.github.com
+151.101.184.133    assets-cdn.github.com
+151.101.184.133    raw.githubusercontent.com
+151.101.184.133    gist.githubusercontent.com
+151.101.184.133    cloud.githubusercontent.com
+151.101.184.133    camo.githubusercontent.com
+151.101.184.133    avatars0.githubusercontent.com
+151.101.184.133    avatars1.githubusercontent.com
+151.101.184.133    avatars2.githubusercontent.com
+151.101.184.133    avatars3.githubusercontent.com
+151.101.184.133    avatars4.githubusercontent.com
+151.101.184.133    avatars5.githubusercontent.com
+151.101.184.133    avatars6.githubusercontent.com
+151.101.184.133    avatars7.githubusercontent.com
+151.101.184.133    avatars8.githubusercontent.com
+ # GitHub End
+```
+
+Windows:
+
+​	C:\Windows\System32\drivers\etc（印象中是这个路径蛤，没找到的话对应win版本去百度一下蛤，添加的hosts应该是和上面的一样的）
+
+
+
 为什么要做这个东西呢？因为没有钱嘛，没钱一定要做嘛！
 
-<img src="https://github.com/SennerMing/renew-upload/blob/master/images/spirit.jpg" alt="精神领袖" style="zoom:33%;" />
+<img src="https://github.com/SennerMing/renew-upload/blob/master/images/spirit.jpg" alt="精神领袖" style="text-align:center;zoom:33%;" />
 
 我们公司的后端存储工具为FastDFS，关于这个存储工具小明百度过，比较适合小文件就类似于抖音小视频的那种，好像有一种说法是5M到500M之间，没仔细阅读过官方文档不是很懂，总之就是不适合大文件的上传。之前我们公司的一些个老哥，写过一个基于此的文件上传接口，在实际应用当中，有些不听话的用户就反馈啦：哎呀，我上传1个G的文件，怎么传着传着莫名其妙的就失败了，而且我再上传，这个小东西都不做上传记录的，还要重新开始，真的是太难用、太浪费时间了！
 
