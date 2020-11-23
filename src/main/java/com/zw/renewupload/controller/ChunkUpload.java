@@ -471,7 +471,7 @@ public class ChunkUpload {
 
         if(files.size() > 0){
             file = files.get(0);
-            log.info("上传文件的个数为："+files.size());
+//            log.info("上传文件的个数为："+files.size());
         }else{
             return ApiResult.fail("没有上传任何文件！");
         }
@@ -484,7 +484,7 @@ public class ChunkUpload {
         String chunkFilePath = null;
         try {
             chunkFilePath = tmpMdbFile(file.getInputStream(),FileUtil.extName(fileName)+chunk+".tmp");
-            log.info(chunkFilePath);
+            //log.info(chunkFilePath);
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -493,9 +493,9 @@ public class ChunkUpload {
          */
 
         FileRedisUtil fileRedisUtil = new FileRedisUtil(fileMd5,fileName,fileSize,chunks,chunk,chunkSize);
-        log.info(String.valueOf(JSONUtil.parse(fileRedisUtil)));
+        //log.info(String.valueOf(JSONUtil.parse(fileRedisUtil)));
 
-        if(md5_filestrem_map.get(fileRedisUtil.getFileMd5()) == null){
+        if(md5_chunkpath_map.get(fileRedisUtil.getFileMd5()) == null){
 
             /*Tomcat指定临时路径代码
             MultipartFile[] multipartFiles = new MultipartFile[fileRedisUtil.getChunks()];
@@ -513,39 +513,56 @@ public class ChunkUpload {
             */
 
             try {
-                taskExecutor.run(fileRedisUtil,timeout);
-//                future = taskExecutor.run(fileRedisUtil,timeout);
-//                try {
-//                    if(future == null){
-//                        return ApiResult.success("UpLoading...");
-//                    }else{
-//                        CheckFileResult checkFileResult = future.get();
-//                        if(checkFileResult.getLock() != null && checkFileResult.getLock() == 2){
-//                            return ApiResult.success("Uploading suspend...");
-//                        }else{
-//                            return ApiResult.success(checkFileResult);
-//                        }
-//                    }
-//                } catch (ExecutionException e) {
-//                    e.printStackTrace();
-//                }
+                log.info("第一次！将临时文件路径存入了md5_chunkpath_map中[块："+fileRedisUtil.getChunk()+"],文件路径："+chunkFilePath);
+                future = taskExecutor.run(fileRedisUtil,timeout);
+////                future = taskExecutor.run(fileRedisUtil,timeout);
+////                try {
+////                    if(future == null){
+////                        return ApiResult.success("UpLoading...");
+////                    }else{
+////                        CheckFileResult checkFileResult = future.get();
+////                        if(checkFileResult.getLock() != null && checkFileResult.getLock() == 2){
+////                            return ApiResult.success("Uploading suspend...");
+////                        }else{
+////                            return ApiResult.success(checkFileResult);
+////                        }
+////                    }
+////                } catch (ExecutionException e) {
+////                    e.printStackTrace();
+////                }
             } catch (InterruptedException e) {
                 e.printStackTrace();
             }
         }else{
 
-            if(fileRedisUtil.getCurrentChunk() > 0){
-                try {
-                    taskExecutor.run(fileRedisUtil,timeout);
-                } catch (InterruptedException e) {
-                    e.printStackTrace();
-                }
-            }
+//            if(fileRedisUtil.getCurrentChunk() > 0){
+//                try {
+//                    taskExecutor.run(fileRedisUtil,timeout);
+//                } catch (InterruptedException e) {
+//                    e.printStackTrace();
+//                }
+//            }
             /*MultipartFile[] multipartFiles = md5_filestrem_map.get(fileRedisUtil.getFileMd5());
             multipartFiles[chunk] = file;*/
             String[] multipartFiles = md5_chunkpath_map.get(fileRedisUtil.getFileMd5());
             multipartFiles[chunk] = chunkFilePath;
+            log.info("非第一次！将临时文件路径存入了md5_chunkpath_map中[块："+fileRedisUtil.getChunk()+"],文件路径："+chunkFilePath);
+
+            if(chunk == chunks-1){
+                try {
+                    return ApiResult.success(future.get());
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                } catch (ExecutionException e) {
+                    e.printStackTrace();
+                }
+            }
+
         }
+//        if(md5_chunkpath_map.get(fileRedisUtil.getFileMd5()) != null){
+//            md5_chunkpath_map.get(fileRedisUtil.getFileMd5())
+//            System.out.println();
+//        }
 
         return ApiResult.success("Uploading...");
     }

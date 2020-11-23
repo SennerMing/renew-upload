@@ -27,7 +27,7 @@ public class FileRedisUtil {
         Long uploadedSize = 0L;
         String uploadSizeStr = RedisUtil.getString(UpLoadConstant.historyUpload + fileMd5);
         if (StrUtil.isNotEmpty(uploadSizeStr)){
-            uploadedSize= Convert.toLong(uploadSizeStr);
+            uploadedSize = Convert.toLong(uploadSizeStr);
         }
         return uploadedSize;
     }
@@ -37,7 +37,8 @@ public class FileRedisUtil {
      * @param upLoadedSize
      */
     public void setUploadedSize(Long upLoadedSize){
-        RedisUtil.setString(UpLoadConstant.historyUpload + fileMd5,Convert.toStr(upLoadedSize));
+        Long uploadedSize = upLoadedSize+getUploadedSize();
+        RedisUtil.setString(UpLoadConstant.historyUpload + fileMd5,Convert.toStr(uploadedSize));
     }
 
     /**
@@ -125,6 +126,7 @@ public class FileRedisUtil {
     public void initFileRedisInfo(String groupPath,String noGroupPath){
         this.setGroupPath(groupPath);
         this.setNoGroupPath(noGroupPath);
+//        this.setUploadedSize(getCurrentChunk()+getChunkSize());
     }
 
     /**
@@ -156,7 +158,8 @@ public class FileRedisUtil {
         //清除redis中上传信息
         RedisUtil.delKeys(new String[]{UpLoadConstant.chunkCurr+fileMd5,
                 UpLoadConstant.fastDfsPath+fileMd5,
-                UpLoadConstant.fastGroupPath+fileMd5
+                UpLoadConstant.fastGroupPath+fileMd5,
+                UpLoadConstant.historyUpload+fileMd5,
         });
     }
 
