@@ -266,7 +266,6 @@ public class TaskExecutor {
         //开始时间
         Long totaltime = 0l;
         Instant stime = null;
-
         CheckFileResult checkFileResult = null;
 
         while(true){
@@ -290,7 +289,7 @@ public class TaskExecutor {
                     totaltime = Duration.between(stime, java.time.Instant.now()).toMillis();
                     //如果总时间大于超时时间的限制，则线程挂起
                     if(totaltime > timeout){
-                        //返回挂起信息。
+                        //返回挂起信息（假的挂起操作，线程的不太会，有待提高）。
                         System.out.println("执行线程挂起操作,数据上传停在了第:"+currentChunk+"块");
                         checkFileResult = new CheckFileResult(fileRedisUtil.getFileMd5(), 2,
                                 fileRedisUtil.getChunks(), null, currentChunk,

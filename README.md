@@ -40,9 +40,21 @@
 
 对上面遗留的问题，已经做出了修复，以下是分片上传Spring-Framework-5.2.5.RELEASESE.zip前端发送请求的截图：
 
+中间请求步骤：
+
+![中间步骤请求截图](https://github.com/SennerMing/renew-upload/blob/master/images/%E5%A4%A7%E6%96%87%E4%BB%B6%E4%B8%8A%E4%BC%A0%E8%AF%B7%E6%B1%82%E6%88%AA%E5%9B%BE.png)
+
+其中upload请求为分片上传调用的接口，其他请求请无视。如果前端暂停上传，则反馈的结果是"Uploading suspend..."
+
+最后一次请求：
+
 ![大文件上传请求截图](https://github.com/SennerMing/renew-upload/blob/master/images/%E5%A4%A7%E6%96%87%E4%BB%B6%E4%B8%8A%E4%BC%A0%E8%AF%B7%E6%B1%82%E6%88%AA%E5%9B%BE.png)
 
-其中upload请求为分片上传调用的接口，其他请求请无视。
+最后一次上传成功后，则反馈的结果中包含viewPath也就是上传到FastDFS的地址。
+
+解决方案：
+
+和遗留问题场景1中所想的思路很像，先从task包下的TaskExecutor（处理入FastDFS的异步线程类）入手，在每次循环中，获得当前需要上传的文件流处做判断，如果获取不到文件流则，则开始开始计时并判断是否从计时开始到此刻为止，有没有超过设置的超时时间，如果超时则MD5_FILEPATH_MAP.remove(fileMd5)，详细的思路请看[代码行号：239](https://github.com/SennerMing/renew-upload/blob/master/src/main/java/com/zw/renewupload/task/TaskExecutor.java)。
 
 
 
