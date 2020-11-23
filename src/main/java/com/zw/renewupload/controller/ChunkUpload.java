@@ -18,6 +18,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Scope;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
@@ -38,6 +39,7 @@ import java.util.concurrent.Future;
 @CrossOrigin
 @Controller
 @RequestMapping("/upload/chunkUpload")
+@Scope(value = "request")
 public class ChunkUpload {
 
     
@@ -482,6 +484,7 @@ public class ChunkUpload {
         String chunkFilePath = null;
         try {
             chunkFilePath = tmpMdbFile(file.getInputStream(),FileUtil.extName(fileName)+chunk+".tmp");
+            log.info(chunkFilePath);
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -510,27 +513,34 @@ public class ChunkUpload {
             */
 
             try {
-                future = taskExecutor.run(fileRedisUtil,timeout);
-                try {
-                    if(future == null){
-                        return ApiResult.success("UpLoading...");
-                    }else{
-                        CheckFileResult checkFileResult = future.get();
-                        if(checkFileResult.getLock() != null && checkFileResult.getLock() == 2){
-                            //线程被挂起了
-                            md5_chunkpath_map.remove(fileRedisUtil.getFileMd5());
-                            return ApiResult.success("Uploading suspend...");
-                        }else{
-                            return ApiResult.success(checkFileResult);
-                        }
-                    }
-                } catch (ExecutionException e) {
-                    e.printStackTrace();
-                }
+                taskExecutor.run(fileRedisUtil,timeout);
+//                future = taskExecutor.run(fileRedisUtil,timeout);
+//                try {
+//                    if(future == null){
+//                        return ApiResult.success("UpLoading...");
+//                    }else{
+//                        CheckFileResult checkFileResult = future.get();
+//                        if(checkFileResult.getLock() != null && checkFileResult.getLock() == 2){
+//                            return ApiResult.success("Uploading suspend...");
+//                        }else{
+//                            return ApiResult.success(checkFileResult);
+//                        }
+//                    }
+//                } catch (ExecutionException e) {
+//                    e.printStackTrace();
+//                }
             } catch (InterruptedException e) {
                 e.printStackTrace();
             }
         }else{
+
+            if(fileRedisUtil.getCurrentChunk() > 0){
+                try {
+                    taskExecutor.run(fileRedisUtil,timeout);
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
+            }
             /*MultipartFile[] multipartFiles = md5_filestrem_map.get(fileRedisUtil.getFileMd5());
             multipartFiles[chunk] = file;*/
             String[] multipartFiles = md5_chunkpath_map.get(fileRedisUtil.getFileMd5());
@@ -592,6 +602,6 @@ public class ChunkUpload {
 
     //存放在Map中，tomcat会报错[c:\\user\\...\\tomcat\\...\\root\\xxxxx.tmp文件找不到]
     public static Map<String,MultipartFile[]> md5_filestrem_map = new HashMap<>();//[key:文件的MD5码，value:文件有序的二进制流数组]
-    public static Map<String,String[]> md5_chunkpath_map = new HashMap<>();//[key:文件的MD5码，value:文件流转存的地址]
+    public static volatile Map<String,String[]> md5_chunkpath_map = new HashMap<>();//[key:文件的MD5码，value:文件流转存的地址]
 
 }
