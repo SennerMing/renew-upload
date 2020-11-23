@@ -523,7 +523,6 @@ public class ChunkUpload {
                         }else{
                             return ApiResult.success(checkFileResult);
                         }
-
                     }
                 } catch (ExecutionException e) {
                     e.printStackTrace();
