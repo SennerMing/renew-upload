@@ -516,7 +516,7 @@ public class ChunkUpload {
                         return ApiResult.success("UpLoading...");
                     }else{
                         CheckFileResult checkFileResult = future.get();
-                        if(checkFileResult.getLock() == 2){
+                        if(checkFileResult.getLock() != null && checkFileResult.getLock() == 2){
                             //线程被挂起了
                             md5_chunkpath_map.remove(fileRedisUtil.getFileMd5());
                             return ApiResult.success("Uploading suspend...");
