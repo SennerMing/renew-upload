@@ -21,6 +21,8 @@ import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.nio.channels.FileChannel;
+import java.time.Duration;
+import java.time.Instant;
 import java.util.concurrent.Future;
 
 /**
@@ -234,7 +236,7 @@ public class TaskExecutor {
      * @throws InterruptedException
      */
     @Async("taskExecutor")
-    public Future<CheckFileResult> run(FileRedisUtil fileRedisUtil) throws InterruptedException {
+    public Future<CheckFileResult> run(FileRedisUtil fileRedisUtil,Long timeout) throws InterruptedException {
         /**
          *
          * 如果获取到的当前块是-1（说明Redis还未做初始化工作）
@@ -261,6 +263,12 @@ public class TaskExecutor {
         String filepath = null;
         int currentChunk = 0;
         FileInputStream fis = null;
+        //开始时间
+        Long totaltime = 0l;
+        Instant stime = null;
+
+        CheckFileResult checkFileResult = null;
+
         while(true){
             //获取当前需要上传块的索引
             if(fileRedisUtil.getCurrentChunk() == -1){
@@ -274,8 +282,27 @@ public class TaskExecutor {
                 return null;
             }
             if(multipartFiles[currentChunk] == null){
+                //该上传的流获取不到就开始计时
+                if(stime == null){
+                    stime = java.time.Instant.now();
+                }else{
+                    //获取计时开始距现在时间(毫秒)
+                    totaltime = Duration.between(stime, java.time.Instant.now()).toMillis();
+                    //如果总时间大于超时时间的限制，则线程挂起
+                    if(totaltime > timeout){
+                        //返回挂起信息。
+                        System.out.println("执行线程挂起操作,数据上传停在了第:"+currentChunk+"块");
+                        checkFileResult = new CheckFileResult(fileRedisUtil.getFileMd5(), 2,
+                                fileRedisUtil.getChunks(), null, currentChunk,
+                                fileRedisUtil.getFileSize(), "");
+                        break;
+                    }
+                }
                 continue;
             }else{
+                totaltime = 0l;
+                stime = null;
+
                 filepath = multipartFiles[currentChunk];
                 try {
                     fis = new FileInputStream(filepath);
@@ -285,40 +312,81 @@ public class TaskExecutor {
                     e.printStackTrace();
                 }
             }
-//            try {
-                String groupPath = "";
-                String noGroupPath = "";
-                String fullPath = "";
+            String groupPath = "";
+            String noGroupPath = "";
 
-                if(fileRedisUtil.getCurrentChunk() == 0){
-                    StorePath path = defectiveClient.uploadAppenderFile(fis,
-                            fileRedisUtil.getChunkSize(), FileUtil.extName(fileRedisUtil.getFileName()));
-                    groupPath = path.getGroup();
-                    noGroupPath = path.getPath();
-                    fullPath = groupPath + noGroupPath;
-                    log.info("path.getFullPath():"+path.getFullPath());
-                    fileRedisUtil.initFileRedisInfo(groupPath,noGroupPath);
-                }else{
-                    defectiveClient.modifyFile(fileRedisUtil.getGroupPath(),fileRedisUtil.getNoGroupPath(), fis,
-                            fileRedisUtil.getChunkSize(),fileRedisUtil.getUploadedSize());
-                }
-
-                //上传分片结束之后，更新Redis中的上传记录，并释放缓存[md5_filestream_map]
-                fileRedisUtil.afterChunkUploading();
-                multipartFiles[currentChunk] = null;
-//            } catch (IOException e) {
-//                fileRedisUtil.clearHistory();
-//                log.error(e.getMessage());
-//            }
+            if(fileRedisUtil.getCurrentChunk() == 0){
+                StorePath path = defectiveClient.uploadAppenderFile(fis,
+                        fileRedisUtil.getChunkSize(), FileUtil.extName(fileRedisUtil.getFileName()));
+                groupPath = path.getGroup();
+                noGroupPath = path.getPath();
+                fileRedisUtil.initFileRedisInfo(groupPath,noGroupPath);
+            }else{
+                defectiveClient.modifyFile(fileRedisUtil.getGroupPath(),fileRedisUtil.getNoGroupPath(), fis,
+                        fileRedisUtil.getChunkSize(),fileRedisUtil.getUploadedSize());
+            }
+            //上传分片结束之后，更新Redis中的上传记录，并释放缓存[md5_filestream_map]
+            fileRedisUtil.afterChunkUploading();
+            multipartFiles[currentChunk] = null;
 
             if(fileRedisUtil.getCurrentChunk() == fileRedisUtil.getChunks()){
                 fileRedisUtil.upLoadFinished();
+                ApiResult checkResult = FileRedisUtil.isCompleted(fileRedisUtil.getFileMd5());
+                checkFileResult = (CheckFileResult)checkResult.getData();
                 break;
             }
         }
-        ApiResult checkResult = FileRedisUtil.isCompleted(fileRedisUtil.getFileMd5());
-        CheckFileResult chekFileResult = (CheckFileResult)checkResult.getData();
-        return new AsyncResult<CheckFileResult>(chekFileResult);
+
+        return new AsyncResult<CheckFileResult>(checkFileResult);
     }
+
+
+    public static void main(String args[]){
+        Long timeout = 10*1000l;
+
+        String[] multipartFiles = new String[20];
+        for(int i = 0;i < multipartFiles.length;i++){
+            if(i < 15){
+                multipartFiles[i] = "p"+i;
+            }
+        }
+
+        Long totaltime = 0l;
+        Instant stime = null;
+        int currentChunk = 0;
+        while(true){
+
+            if(multipartFiles[currentChunk] == null){
+                //该上传的流获取不到就开始计时
+                if(stime == null){
+                    stime = java.time.Instant.now();
+                }else{
+                    totaltime = Duration.between(stime, java.time.Instant.now()).toMillis();
+                    System.out.println(totaltime);
+
+                    if(totaltime > timeout){
+                        //线程挂起
+                        System.out.println("执行线程挂起操作,数据上传停在了第:"+currentChunk+"块");
+                        break;
+                    }
+                }
+                continue;
+            }else{
+                totaltime = 0l;
+                stime = null;
+                System.out.println("当前上传块:"+currentChunk);
+                try {
+                    Thread.sleep(100);
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
+                currentChunk++;
+            }
+        }
+
+
+
+    }
+
 
 }

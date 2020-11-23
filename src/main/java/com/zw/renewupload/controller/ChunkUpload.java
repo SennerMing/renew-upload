@@ -17,6 +17,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
@@ -38,15 +39,7 @@ import java.util.concurrent.Future;
 @Controller
 @RequestMapping("/upload/chunkUpload")
 public class ChunkUpload {
-    @Autowired
-    private AppendFileStorageClient appendFileStorageClient;
 
-    @Autowired
-    private DefectiveAppendFileStorageClient defectiveClient;
-
-    //自动装配 线程测试类
-    @Autowired
-    private TaskExecutor taskExecutor;
     
     //获取配置
     /**
@@ -66,7 +59,6 @@ public class ChunkUpload {
     public
     @ResponseBody
     ApiResult upload_do(@RequestParam Map<String, Object> paramMap, HttpServletRequest request) throws IOException {
-
         String noGroupPath;//存储在fastdfs不带组的路径
         String fileMd5= (String) paramMap.get("fileMd5");
         //继续上传刚删除的文件，要加锁来阻止其上传,否则会出现丢块问题
@@ -394,8 +386,7 @@ public class ChunkUpload {
 //    }
 
 
-    public static Map<String,MultipartFile[]> md5_filestrem_map = new HashMap<>();//[key:文件的MD5码，value:文件有序的二进制流数组]
-    public static Map<String,String[]> md5_chunkpath_map = new HashMap<>();//[key:文件的MD5码，value:文件有序的二进制流数组]
+
 
     @PostMapping("/upload")
     @ResponseBody
@@ -483,7 +474,7 @@ public class ChunkUpload {
             return ApiResult.fail("没有上传任何文件！");
         }
 
-        Future future = null;
+        Future<CheckFileResult> future = null;
 
         /**
          * 新增代码开始：将文件转存到自己指定的地方
@@ -519,12 +510,20 @@ public class ChunkUpload {
             */
 
             try {
-                future = taskExecutor.run(fileRedisUtil);
+                future = taskExecutor.run(fileRedisUtil,timeout);
                 try {
                     if(future == null){
-                        return ApiResult.success("UpLoading");
+                        return ApiResult.success("UpLoading...");
                     }else{
-                        return ApiResult.success(future.get());
+                        CheckFileResult checkFileResult = future.get();
+                        if(checkFileResult.getLock() == 2){
+                            //线程被挂起了
+                            md5_chunkpath_map.remove(fileRedisUtil.getFileMd5());
+                            return ApiResult.success("Uploading suspend...");
+                        }else{
+                            return ApiResult.success(checkFileResult);
+                        }
+
                     }
                 } catch (ExecutionException e) {
                     e.printStackTrace();
@@ -538,19 +537,32 @@ public class ChunkUpload {
             String[] multipartFiles = md5_chunkpath_map.get(fileRedisUtil.getFileMd5());
             multipartFiles[chunk] = chunkFilePath;
         }
-        return ApiResult.success();
+
+        return ApiResult.success("Uploading...");
     }
 
     public static void main(String args[]){
         System.out.println(ApiResult.fail().getCode());
     }
 
+
+    /**
+     * Tomcat 获得临时文件转存路径
+     * @param is
+     * @param fileName
+     * @return
+     */
     public String tmpMdbFile(InputStream is, String fileName) {
-        File dest = new File("D:\\tomcattmp" + System.currentTimeMillis() + "_" + fileName);
+        File dest = new File(tmpdir + System.currentTimeMillis() + "_" + fileName);
         saveFile(is, dest);
         return dest.getAbsolutePath();
     }
 
+    /**
+     * 文件转存
+     * @param is
+     * @param dest
+     */
     private void saveFile(InputStream is, File dest) {
         try(FileOutputStream fos = new FileOutputStream(dest)) {
             int len;
@@ -563,6 +575,24 @@ public class ChunkUpload {
         }
     }
 
+    @Autowired
+    private AppendFileStorageClient appendFileStorageClient;
 
+    @Autowired
+    private DefectiveAppendFileStorageClient defectiveClient;
+
+    @Value("${sliceupload.timeout}")
+    private Long timeout;
+
+    @Value("${sliceupload.tmpdir}")
+    private String tmpdir;
+
+    //自动装配 线程测试类
+    @Autowired
+    private TaskExecutor taskExecutor;
+
+    //存放在Map中，tomcat会报错[c:\\user\\...\\tomcat\\...\\root\\xxxxx.tmp文件找不到]
+    public static Map<String,MultipartFile[]> md5_filestrem_map = new HashMap<>();//[key:文件的MD5码，value:文件有序的二进制流数组]
+    public static Map<String,String[]> md5_chunkpath_map = new HashMap<>();//[key:文件的MD5码，value:文件流转存的地址]
 
 }

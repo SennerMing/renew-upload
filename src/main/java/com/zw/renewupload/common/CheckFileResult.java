@@ -2,7 +2,7 @@ package com.zw.renewupload.common;
 //上传前文件检测
 public class CheckFileResult {
     private String fileMd5;
-    //0:锁未占用,1:锁占用
+    //0:锁未占用,1:锁占用,2:上传超时被线程被挂起
     private Integer lock;
     //文件分块数量
     private Integer chunkNum;
@@ -14,6 +14,19 @@ public class CheckFileResult {
     private Long totalSize;
     //访问路径
     private  String viewPath;
+
+    public CheckFileResult() {
+    }
+
+    public CheckFileResult(String fileMd5, Integer lock, Integer chunkNum, Integer chunkSize, Integer chunkCurr, Long totalSize, String viewPath) {
+        this.fileMd5 = fileMd5;
+        this.lock = lock;
+        this.chunkNum = chunkNum;
+        this.chunkSize = chunkSize;
+        this.chunkCurr = chunkCurr;
+        this.totalSize = totalSize;
+        this.viewPath = viewPath;
+    }
 
     public String getViewPath() {
         return viewPath;
