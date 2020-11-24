@@ -10,6 +10,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.EnableMBeanExport;
 import org.springframework.context.annotation.Import;
 import org.springframework.jmx.support.RegistrationPolicy;
+import org.springframework.scheduling.annotation.EnableAsync;
 
 import javax.servlet.MultipartConfigElement;
 
@@ -20,6 +21,7 @@ import javax.servlet.MultipartConfigElement;
 @Import(FdfsClientConfig.class)
 //解决jmx注册冲突
 @EnableMBeanExport(registration = RegistrationPolicy.IGNORE_EXISTING)
+@EnableAsync
 public class RenewUploadApplication {
 
 	public static void main(String[] args) {

@@ -12,7 +12,7 @@ import com.github.tobato.fastdfs.service.AppendFileStorageClient;
 import com.zw.renewupload.append.DefectiveAppendFileStorageClient;
 import com.zw.renewupload.append.FileRedisUtil;
 import com.zw.renewupload.common.*;
-import com.zw.renewupload.task.TaskExecutor;
+import com.zw.renewupload.task.MyTaskExecutor;
 import lombok.extern.slf4j.Slf4j;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -316,78 +316,6 @@ public class ChunkUpload {
     }
 
 
-//    @PostMapping("/upload")
-//    @ResponseBody
-//    ApiResult upload(@RequestParam Map<String, Object> paramMap, HttpServletRequest request) throws IOException {
-//        String fileMd5 = (String) paramMap.get("fileMd5");
-//        if (StrUtil.isEmpty(fileMd5)){
-//            return ApiResult.fail("fileMd5不能为空");
-//        }
-//        CheckFileResult checkFileResult = new CheckFileResult();
-//        //模拟从mysql中查询文件表的md5,这里从redis里查询
-//        List<String> fileList = RedisUtil.getListAll(UpLoadConstant.completedList);
-//        if (CollUtil.isNotEmpty(fileList)){
-//            for (String e:fileList){
-//                JSONObject obj=JSONUtil.parseObj(e);
-//                if (obj.get("md5").equals(fileMd5)){
-//                    checkFileResult.setTotalSize(obj.getLong("lenght"));
-//                    checkFileResult.setViewPath(obj.getStr("url"));
-//                    return ApiResult.success(checkFileResult);
-//                }
-//            }
-//        }
-//
-//        //查询锁占
-//        String lockName=UpLoadConstant.currLocks+fileMd5;
-//        Long lock= RedisUtil.incrBy(lockName,1);
-//        String lockOwner=UpLoadConstant.lockOwner+ fileMd5;
-//        String chunkCurrkey=UpLoadConstant.chunkCurr+fileMd5;
-//        //不是第一次上传
-//        if (lock>1){
-//            checkFileResult.setLock(1);
-//            //检查是否为锁的拥有者,如果是放行
-//            String oWner= RedisUtil.getString(lockOwner);
-//            if (StrUtil.isEmpty(oWner)){
-//                return ApiResult.fail("无法获取文件锁拥有者");
-//            }else {
-////              判断这个owner是不是登录的用户
-//                if (oWner.equals(oWner)){
-//                    //如果是就获得这个当前上传的chunk index是多少，默认是个0
-//                    String chunkCurr = RedisUtil.getString(chunkCurrkey);
-//                    if (StrUtil.isEmpty(chunkCurr)){
-//                        return ApiResult.fail("无法获取当前文件chunkCurr");
-//                    }
-//                    checkFileResult.setChunkCurr(Convert.toInt(chunkCurr));
-//                    return ApiResult.success(checkFileResult);
-//                }else {
-//                    return ApiResult.fail("当前文件已有人在上传,您暂无法上传该文件");
-//                }
-//            }
-//        }else {
-//
-//            //初始化锁.分块
-//            RedisUtil.setString(lockOwner, lockOwner);
-//            RedisUtil.setString(chunkCurrkey,"0"); //第一块索引是0,与前端保持一致
-//            checkFileResult.setChunkCurr(0);
-////            return  ApiResult.success(checkFileResult);
-//            //暂时只考虑一次成功问题
-//
-//            paramMap.put("name", paramMap.get("fileName"));
-//            paramMap.put("size", paramMap.get("fileSize"));
-//            int chunk = 0;
-//            if(paramMap.get("chunk") != null){
-//                if(paramMap.get("chunk").toString().trim().length()!=0){
-//                    chunk = Integer.parseInt(paramMap.get("chunk").toString().trim());
-//                    chunk-=1;
-//                }
-//            }
-//            paramMap.put("chunk", String.valueOf(chunk));
-//            return upload_do(paramMap, request);
-//        }
-//
-//    }
-
-
 
 
     @PostMapping("/upload")
@@ -466,89 +394,40 @@ public class ChunkUpload {
         Long chunkSize = Long.parseLong((String)paramMap.get("chunkSize"));
 
         List<MultipartFile> files = ((MultipartHttpServletRequest) request).getFiles("file");
-
         MultipartFile file = null;
-
         if(files.size() > 0){
             file = files.get(0);
-//            log.info("上传文件的个数为："+files.size());
         }else{
             return ApiResult.fail("没有上传任何文件！");
         }
 
         Future<CheckFileResult> future = null;
-
-        /**
-         * 新增代码开始：将文件转存到自己指定的地方
-         */
+        //将文件转存到自己指定的地方
         String chunkFilePath = null;
         try {
             chunkFilePath = tmpMdbFile(file.getInputStream(),FileUtil.extName(fileName)+chunk+".tmp");
-            //log.info(chunkFilePath);
         } catch (IOException e) {
             e.printStackTrace();
         }
-        /**
-         * 新增代码结束：将文件转存到自己指定的地方
-         */
 
         FileRedisUtil fileRedisUtil = new FileRedisUtil(fileMd5,fileName,fileSize,chunks,chunk,chunkSize);
-        //log.info(String.valueOf(JSONUtil.parse(fileRedisUtil)));
-
         if(md5_chunkpath_map.get(fileRedisUtil.getFileMd5()) == null){
 
-            /*Tomcat指定临时路径代码
-            MultipartFile[] multipartFiles = new MultipartFile[fileRedisUtil.getChunks()];
-            multipartFiles[chunk] = file;
-            md5_filestrem_map.put(fileRedisUtil.getFileMd5(),multipartFiles);*/
-
-            /**
-             * 新增代码开始：将文件转存到自己指定的地方
-             */
             String[] multipartFiles = new String[fileRedisUtil.getChunks()];
             multipartFiles[chunk] = chunkFilePath;
             md5_chunkpath_map.put(fileRedisUtil.getFileMd5(),multipartFiles);
-            /**
-            * 新增代码开始：将文件转存到自己指定的地方
-            */
 
             try {
                 log.info("第一次！将临时文件路径存入了md5_chunkpath_map中[块："+fileRedisUtil.getChunk()+"],文件路径："+chunkFilePath);
-//                future = taskExecutor.run(fileRedisUtil,timeout);
-                md5_asyncresult_map.put(fileRedisUtil.getFileMd5(),taskExecutor.run(fileRedisUtil,timeout));
-////                future = taskExecutor.run(fileRedisUtil,timeout);
-////                try {
-////                    if(future == null){
-////                        return ApiResult.success("UpLoading...");
-////                    }else{
-////                        CheckFileResult checkFileResult = future.get();
-////                        if(checkFileResult.getLock() != null && checkFileResult.getLock() == 2){
-////                            return ApiResult.success("Uploading suspend...");
-////                        }else{
-////                            return ApiResult.success(checkFileResult);
-////                        }
-////                    }
-////                } catch (ExecutionException e) {
-////                    e.printStackTrace();
-////                }
+                md5_asyncresult_map.put(fileRedisUtil.getFileMd5(),myTaskExecutor.run(fileRedisUtil,timeout));
             } catch (InterruptedException e) {
                 e.printStackTrace();
             }
         }else{
 
-//            if(fileRedisUtil.getCurrentChunk() > 0){
-//                try {
-//                    taskExecutor.run(fileRedisUtil,timeout);
-//                } catch (InterruptedException e) {
-//                    e.printStackTrace();
-//                }
-//            }
-            /*MultipartFile[] multipartFiles = md5_filestrem_map.get(fileRedisUtil.getFileMd5());
-            multipartFiles[chunk] = file;*/
             String[] multipartFiles = md5_chunkpath_map.get(fileRedisUtil.getFileMd5());
             multipartFiles[chunk] = chunkFilePath;
             log.info("非第一次！将临时文件路径存入了md5_chunkpath_map中[块："+fileRedisUtil.getChunk()+"],文件路径："+chunkFilePath);
-
             if(chunk == chunks-1 && (md5_asyncresult_map.get(fileRedisUtil.getFileMd5()) != null)){
                 try {
                     return ApiResult.success(md5_asyncresult_map.get(fileRedisUtil.getFileMd5()).get());
@@ -558,19 +437,10 @@ public class ChunkUpload {
                     e.printStackTrace();
                 }
             }
-
         }
-//        if(md5_chunkpath_map.get(fileRedisUtil.getFileMd5()) != null){
-//            md5_chunkpath_map.get(fileRedisUtil.getFileMd5())
-//            System.out.println();
-//        }
-
         return ApiResult.success("Uploading...");
     }
 
-    public static void main(String args[]){
-        System.out.println(ApiResult.fail().getCode());
-    }
 
 
     /**
@@ -616,12 +486,14 @@ public class ChunkUpload {
 
     //自动装配 线程测试类
     @Autowired
-    private TaskExecutor taskExecutor;
+    private MyTaskExecutor myTaskExecutor;
 
     //存放在Map中，tomcat会报错[c:\\user\\...\\tomcat\\...\\root\\xxxxx.tmp文件找不到]
     public static Map<String,MultipartFile[]> md5_filestrem_map = new HashMap<>();//[key:文件的MD5码，value:文件有序的二进制流数组]
-    public static volatile Map<String,String[]> md5_chunkpath_map = new HashMap<>();//[key:文件的MD5码，value:文件流转存的地址]
 
+    //存放MD5-TMP_FILE_PATH
+    public static volatile Map<String,String[]> md5_chunkpath_map = new HashMap<>();//[key:文件的MD5码，value:文件流转存的地址]
+    //存放异步线程结果
     public static Map<String,Future> md5_asyncresult_map = new HashMap<>();
 
 }
