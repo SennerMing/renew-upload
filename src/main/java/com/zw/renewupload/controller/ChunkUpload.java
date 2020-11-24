@@ -514,7 +514,8 @@ public class ChunkUpload {
 
             try {
                 log.info("第一次！将临时文件路径存入了md5_chunkpath_map中[块："+fileRedisUtil.getChunk()+"],文件路径："+chunkFilePath);
-                future = taskExecutor.run(fileRedisUtil,timeout);
+//                future = taskExecutor.run(fileRedisUtil,timeout);
+                md5_asyncresult_map.put(fileRedisUtil.getFileMd5(),taskExecutor.run(fileRedisUtil,timeout));
 ////                future = taskExecutor.run(fileRedisUtil,timeout);
 ////                try {
 ////                    if(future == null){
@@ -548,9 +549,9 @@ public class ChunkUpload {
             multipartFiles[chunk] = chunkFilePath;
             log.info("非第一次！将临时文件路径存入了md5_chunkpath_map中[块："+fileRedisUtil.getChunk()+"],文件路径："+chunkFilePath);
 
-            if(chunk == chunks-1){
+            if(chunk == chunks-1 && (md5_asyncresult_map.get(fileRedisUtil.getFileMd5()) != null)){
                 try {
-                    return ApiResult.success(future.get());
+                    return ApiResult.success(md5_asyncresult_map.get(fileRedisUtil.getFileMd5()).get());
                 } catch (InterruptedException e) {
                     e.printStackTrace();
                 } catch (ExecutionException e) {
@@ -620,5 +621,7 @@ public class ChunkUpload {
     //存放在Map中，tomcat会报错[c:\\user\\...\\tomcat\\...\\root\\xxxxx.tmp文件找不到]
     public static Map<String,MultipartFile[]> md5_filestrem_map = new HashMap<>();//[key:文件的MD5码，value:文件有序的二进制流数组]
     public static volatile Map<String,String[]> md5_chunkpath_map = new HashMap<>();//[key:文件的MD5码，value:文件流转存的地址]
+
+    public static Map<String,Future> md5_asyncresult_map = new HashMap<>();
 
 }

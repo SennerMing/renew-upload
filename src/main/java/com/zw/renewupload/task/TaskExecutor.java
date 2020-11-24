@@ -562,11 +562,12 @@ public class TaskExecutor {
             }
             //上传分片结束之后，更新Redis中的上传记录，并释放缓存[md5_filestream_map] 1,697,906,688
             multipartFiles[currentChunk] = null;
-            File useLessFile = new File(filepath);
-            useLessFile.delete();
+
             fileRedisUtil.afterChunkUploading();
             try {
                 fis.close();
+                File useLessFile = new File(filepath);
+                useLessFile.delete();
             } catch (IOException e) {
                 e.printStackTrace();
             }
@@ -626,9 +627,17 @@ public class TaskExecutor {
 //            }
 //        }
 
-        String name = FileUtil.extName("asdasda.pdf");
-        System.out.println(name);
+//        String name = FileUtil.extName("asdasda.pdf");
+//        System.out.println(name);
+
+        String name = "";
+        System.out.println(name.trim().length());
+
     }
+
+
+
+
 
 
 }
