@@ -140,8 +140,6 @@ public class FileRedisUtil {
     }
 
 
-
-
     /**
      * 完成上传
      *      将完成上传文件的信息记录到Redis中
@@ -150,7 +148,7 @@ public class FileRedisUtil {
         FileResult fileResult = new FileResult();
         fileResult.setMd5(fileMd5);
         fileResult.setName(fileName);
-        fileResult.setLenght(fileSize);
+        fileResult.setLength(fileSize);
         //默认group
         fileResult.setUrl(getGroupPath()+"/"+getNoGroupPath());
         //redis完成列表信息加入redis中（Uploading:+completedList）
@@ -181,7 +179,9 @@ public class FileRedisUtil {
             for (String e:fileList){
                 JSONObject obj=JSONUtil.parseObj(e);
                 if (obj.get("md5").equals(fileMd5)){
-                    checkFileResult.setTotalSize(obj.getLong("lenght"));
+                    checkFileResult.setName(obj.getStr("name"));
+                    checkFileResult.setFileMd5(obj.getStr("md5"));
+                    checkFileResult.setTotalSize(obj.getLong("length"));
                     checkFileResult.setViewPath(obj.getStr("url"));
                     return ApiResult.success(checkFileResult);
                 }
@@ -244,7 +244,6 @@ public class FileRedisUtil {
     public void setChunk(Integer chunk) {
         this.chunk = chunk;
     }
-
 
 
     public FileRedisUtil(String fileMd5, String fileName, Long fileSize, Integer chunks, Integer chunk,Long chunkSize) {

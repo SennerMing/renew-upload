@@ -14,14 +14,13 @@ import org.springframework.scheduling.annotation.EnableAsync;
 
 import javax.servlet.MultipartConfigElement;
 
-
+//@EnableAsync
 @ServletComponentScan
 @SpringBootApplication(exclude = JpaRepositoriesAutoConfiguration.class)
 //导入FdfsClient
 @Import(FdfsClientConfig.class)
 //解决jmx注册冲突
 @EnableMBeanExport(registration = RegistrationPolicy.IGNORE_EXISTING)
-@EnableAsync
 public class RenewUploadApplication {
 
 	public static void main(String[] args) {

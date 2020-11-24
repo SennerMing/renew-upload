@@ -6,6 +6,7 @@ import com.zw.renewupload.append.DefectiveAppendFileStorageClient;
 import com.zw.renewupload.append.FileRedisUtil;
 import com.zw.renewupload.common.ApiResult;
 import com.zw.renewupload.common.CheckFileResult;
+import com.zw.renewupload.common.FileResult;
 import com.zw.renewupload.controller.ChunkUpload;
 import lombok.extern.slf4j.Slf4j;
 import org.slf4j.Logger;
@@ -104,7 +105,7 @@ public class MyTaskExecutor {
                     if(totaltime > timeout){
                         //返回挂起信息（假的挂起操作，线程的不太会，有待提高）。
                         System.out.println("执行线程挂起操作,数据上传停在了第:"+currentChunk+"块");
-                        checkFileResult = new CheckFileResult(fileRedisUtil.getFileMd5(), 2,
+                        checkFileResult = new CheckFileResult(fileRedisUtil.getFileName(),fileRedisUtil.getFileMd5(), 2,
                                 fileRedisUtil.getChunks(), null, currentChunk,
                                 fileRedisUtil.getFileSize(), "");
                         break;
@@ -152,7 +153,11 @@ public class MyTaskExecutor {
             } catch (IOException e) {
                 e.printStackTrace();
             }
-            if(fileRedisUtil.getCurrentChunk() == fileRedisUtil.getChunks()){
+            log.info("CurrentChunk:"+fileRedisUtil.getCurrentChunk()+", Chunks:"+fileRedisUtil.getChunks());
+
+            int current = fileRedisUtil.getCurrentChunk();
+            int chunks = fileRedisUtil.getChunks();
+            if(current == chunks){
                 fileRedisUtil.upLoadFinished();
                 ApiResult checkResult = FileRedisUtil.isCompleted(fileRedisUtil.getFileMd5());
                 checkFileResult = (CheckFileResult)checkResult.getData();
@@ -161,7 +166,7 @@ public class MyTaskExecutor {
                 break;
             }
         }
-
+        ChunkUpload.md5_asyncresult_map.remove(fileRedisUtil.getFileMd5());
         return new AsyncResult<CheckFileResult>(checkFileResult);
     }
 

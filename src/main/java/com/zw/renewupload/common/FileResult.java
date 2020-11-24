@@ -9,7 +9,7 @@ public class FileResult {
     private String name;
 
     //文件大小
-    private Long lenght;
+    private Long length;
 
     public String getUrl() {
         return url;
@@ -35,11 +35,11 @@ public class FileResult {
         this.name = name;
     }
 
-    public Long getLenght() {
-        return lenght;
+    public Long getLength() {
+        return length;
     }
 
-    public void setLenght(Long lenght) {
-        this.lenght = lenght;
+    public void setLength(Long length) {
+        this.length = length;
     }
 }

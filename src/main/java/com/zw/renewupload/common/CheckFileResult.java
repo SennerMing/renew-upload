@@ -14,11 +14,14 @@ public class CheckFileResult {
     private Long totalSize;
     //访问路径
     private  String viewPath;
+    //文件名称
+    private String name;
 
     public CheckFileResult() {
     }
 
-    public CheckFileResult(String fileMd5, Integer lock, Integer chunkNum, Integer chunkSize, Integer chunkCurr, Long totalSize, String viewPath) {
+    public CheckFileResult(String name,String fileMd5, Integer lock, Integer chunkNum, Integer chunkSize, Integer chunkCurr, Long totalSize, String viewPath) {
+        this.name = name;
         this.fileMd5 = fileMd5;
         this.lock = lock;
         this.chunkNum = chunkNum;
@@ -82,6 +85,14 @@ public class CheckFileResult {
 
     public void setTotalSize(Long totalSize) {
         this.totalSize = totalSize;
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    public void setName(String name) {
+        this.name = name;
     }
 }
 
