@@ -339,16 +339,22 @@ public class ChunkUpload {
         if (StrUtil.isEmpty(fileMd5)){
             return ApiResult.fail("fileMd5不能为空");
         }else{
-            ArrayList<Integer> uploadedChunks = new ArrayList<>();
-            if(md5_chunkpath_map.get(fileMd5) != null){
-                String[] tmpPathArr = md5_chunkpath_map.get(fileMd5);
-                for(int i = 0;i < tmpPathArr.length;i++){
-                    if(tmpPathArr[i] != null){
-                        uploadedChunks.add(i+1);
-                    }
-                }
+//            ArrayList<Integer> uploadedChunks = new ArrayList<>();
+//            if(md5_chunkpath_map.get(fileMd5) != null){
+//                String[] tmpPathArr = md5_chunkpath_map.get(fileMd5);
+//                for(int i = 0;i < tmpPathArr.length;i++){
+//                    if(tmpPathArr[i] != null){
+//                        uploadedChunks.add(i+1);
+//                    }
+//                }
+//            }
+            int currentChunk = 0;
+            String rcchunk = RedisUtil.getString("Uploading:file:chunkCurr:"+fileMd5);
+            if(StrUtil.isNotEmpty(rcchunk)){
+                currentChunk = Convert.toInt(rcchunk);
             }
-            resultObj.put("uploadedChunks",uploadedChunks);
+
+            resultObj.put("uploadedChunks",currentChunk);
             return ApiResult.success(resultObj);
         }
     }
