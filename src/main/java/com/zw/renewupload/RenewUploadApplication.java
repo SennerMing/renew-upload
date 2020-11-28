@@ -6,6 +6,7 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.autoconfigure.data.jpa.JpaRepositoriesAutoConfiguration;
 import org.springframework.boot.web.servlet.MultipartConfigFactory;
 import org.springframework.boot.web.servlet.ServletComponentScan;
+import org.springframework.cloud.client.discovery.EnableDiscoveryClient;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.EnableMBeanExport;
 import org.springframework.context.annotation.Import;
@@ -21,6 +22,7 @@ import javax.servlet.MultipartConfigElement;
 @Import(FdfsClientConfig.class)
 //解决jmx注册冲突
 @EnableMBeanExport(registration = RegistrationPolicy.IGNORE_EXISTING)
+@EnableDiscoveryClient
 public class RenewUploadApplication {
 
 	public static void main(String[] args) {
