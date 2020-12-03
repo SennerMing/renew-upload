@@ -34,55 +34,14 @@ public class UploadChunkExcutor {
     @Autowired
     private DefectiveAppendFileStorageClient defectiveClient;
 
-//    @Async
-//    public void dealWith(UploadChunk uploadChunk) throws InterruptedException {
-////        log.info("===============================1.UploadChunk写入前准备，开始===============================");
-//        FileInputStream fis = null;
-//        try {
-//            fis = new FileInputStream(uploadChunk.getChunkTmpPath());
-//        } catch (FileNotFoundException e) {
-//            e.printStackTrace();
-//        }
-////        log.info("===============================1.UploadChunk写入前准备，结束===============================");
-//
-//        //轮询判断当前线程的chunk是否为当前可以写入的块
-//        int threadChunk = uploadChunk.getChunk();
-//        while(true){
-//
-//            boolean isAppended = false;
-//            int needToAppendChunk = UpLoadRedisUtils.getCurrentChunk(uploadChunk.getFileMd5());
-////            log.info("循环中[threadChunk:"+threadChunk+"],需要上传的[needToAppendChunk:"+needToAppendChunk+"]");
-//            if(threadChunk == needToAppendChunk){
-//                synchronized (this){        //存在多个线程在等待的情况，对写入与修改操作加锁。
-//                    isAppended = deliverToFastDFS(uploadChunk,fis);
-//                }
-//            }else{
-//                if(Thread.currentThread().getPriority() == 0){
-//                    int degree = uploadChunk.getChunks()/10;
-//                    int priority = 10-(uploadChunk.getChunk()/degree);
-//                    Thread.currentThread().setPriority(priority==0?(priority+1):priority);
-//                }else{
-//                    Thread.sleep(200);
-//                }
-//            }
-//            if(isAppended){ //判断是否写入成功
-//                delUploadedFile(fis, uploadChunk.getChunkTmpPath());
-//                break;
-//            }
-//        }
-////        log.info("================2."+uploadChunk.getFileName()+"第["+uploadChunk.getChunk()+"]轮询，结束================");
-//    }
-
     @Async
     public Future<UploadChunk> dealWith(UploadChunk uploadChunk) throws InterruptedException {
-//        log.info("===============================1.UploadChunk写入前准备，开始===============================");
         FileInputStream fis = null;
         try {
             fis = new FileInputStream(uploadChunk.getChunkTmpPath());
         } catch (FileNotFoundException e) {
             e.printStackTrace();
         }
-//        log.info("===============================1.UploadChunk写入前准备，结束===============================");
 
         //轮询判断当前线程的chunk是否为当前可以写入的块
         int threadChunk = uploadChunk.getChunk();
@@ -90,7 +49,6 @@ public class UploadChunkExcutor {
 
             boolean isAppended = false;
             int needToAppendChunk = UpLoadRedisUtils.getCurrentChunk(uploadChunk.getFileMd5());
-//            log.info("循环中[threadChunk:"+threadChunk+"],需要上传的[needToAppendChunk:"+needToAppendChunk+"]");
             if(threadChunk == needToAppendChunk){
                 synchronized (this){        //存在多个线程在等待的情况，对写入与修改操作加锁。
                     isAppended = deliverToFastDFS(uploadChunk,fis);
@@ -106,10 +64,10 @@ public class UploadChunkExcutor {
             }
             if(isAppended){ //判断是否写入成功
                 delUploadedFile(fis, uploadChunk.getChunkTmpPath());
+                uploadChunk.setStatus(1);
                 break;
             }
         }
-//        log.info("================2."+uploadChunk.getFileName()+"第["+uploadChunk.getChunk()+"]轮询，结束================");
         return new AsyncResult<>(uploadChunk);
     }
 
@@ -122,8 +80,6 @@ public class UploadChunkExcutor {
     private Boolean deliverToFastDFS(UploadChunk uploadChunk, InputStream fis){
         log.info("进入写入方法！");
         Boolean isAppended = false;
-
-//        log.info("===============================1.UploadChunk写入，开始===============================");
         //如果是第一块
         //  1.将上传的块写入FastDFS中
         //  2.记录 [GroupPath:上传的文件存放在FastDFS的哪个group中]
@@ -146,9 +102,7 @@ public class UploadChunkExcutor {
         }
         java.time.Duration duration = java.time.Duration.between(startTime,LocalDateTime.now());
         log.info("写入执行时间："+duration);
-//        log.info("===============================1.UploadChunk写入，结束===============================");
 
-//        log.info("===============================2.UploadChunk写入完成后处理，开始===============================");
         //如果上传完成
         //  1.清除redis中的[CurrentChunk:当前需要写入的块的Index]、[UploadedSize:当前已经上传块的总大小]、
         //  [GroupPath:上传的文件存放在FastDFS的哪个group中]、[DistrictPath:上传的文件在FastDFS的区域的路径]
@@ -160,7 +114,7 @@ public class UploadChunkExcutor {
 
         isAppended = true;
         if(uploadChunk.getChunk().equals(uploadChunk.getChunks()-1)){
-            uploadChunk.setViewPath(upLoadRedisUtils.getGroupPath()+"/"+upLoadRedisUtils.getDistrictPath());
+            uploadChunk.setFilePath(upLoadRedisUtils.getGroupPath()+"/"+upLoadRedisUtils.getDistrictPath());
             upLoadRedisUtils.addToCompletedList(uploadChunk);
             upLoadRedisUtils.clearAllRecord();
             log.info(JSONUtil.toJsonStr(uploadChunk));
@@ -168,7 +122,6 @@ public class UploadChunkExcutor {
             upLoadRedisUtils.setCurrentChunk(uploadChunk.getChunk()+1);
             upLoadRedisUtils.appendUploadedSize(uploadChunk.getChunkSize());
         }
-//        log.info("===============================2.UploadChunk写入完成后处理，结束===============================");
         log.info("已上传文件：["+uploadChunk.getFileName()+"]的第：["+uploadChunk.getChunk()+"]块!");
         return isAppended;
     }
@@ -188,11 +141,5 @@ public class UploadChunkExcutor {
         }
     }
 
-
-//    public static void main(String args[]){
-//        int degree = 106/10;
-//        System.out.println(degree);
-//        System.out.println(106/degree);
-//    }
 
 }

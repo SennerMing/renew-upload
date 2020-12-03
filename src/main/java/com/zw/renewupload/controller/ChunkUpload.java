@@ -16,6 +16,7 @@ import com.zw.renewupload.common.*;
 import com.zw.renewupload.entity.UploadChunk;
 //import com.zw.renewupload.task.MyTaskExecutor;
 import com.zw.renewupload.task.UploadChunkExcutor;
+import com.zw.renewupload.utils.UpLoadRedisUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -31,10 +32,7 @@ import sun.security.provider.MD5;
 
 import javax.servlet.http.HttpServletRequest;
 import java.io.*;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 
@@ -321,42 +319,30 @@ public class ChunkUpload {
 
     @GetMapping("/uploadCheck")
     @ResponseBody
-    ApiResult uploadCheck(@RequestParam Map<String, Object> paramMap, HttpServletRequest request) throws IOException {
+    ApiResult uploadCheck(UploadChunk uploadChunk, HttpServletRequest request) throws IOException {
 
-        String fileName = (String) paramMap.get("fileName");
-        String fileMd5 = (String) paramMap.get("fileMd5");
-        Integer chunks = Integer.parseInt((String) paramMap.get("chunks"));
-        Long fileSize = Long.parseLong((String)paramMap.get("fileSize")) ;
+//        String fileName = (String) paramMap.get("fileName");
+//        String fileMd5 = (String) paramMap.get("fileMd5");
+//        Integer chunks = Integer.parseInt((String) paramMap.get("chunks"));
+//        Long fileSize = Long.parseLong((String)paramMap.get("fileSize")) ;
 
         JSONObject resultObj = new JSONObject();
-        resultObj.put("fileName",fileName);
-        resultObj.put("chunks",chunks);
-        resultObj.put("fileSize",fileSize);
+        resultObj.put("fileName",uploadChunk.getFileName());
+        resultObj.put("chunks",uploadChunk.getChunks());
+        resultObj.put("fileSize",uploadChunk.getFileSize());
 
-        ApiResult checkReuslt = FileRedisUtil.isCompleted(fileMd5);
+        ApiResult checkReuslt = FileRedisUtil.isCompleted(uploadChunk.getFileMd5());
         if("0".equals(checkReuslt.getCode())){
             return checkReuslt;
-        }
-
-        if (StrUtil.isEmpty(fileMd5)){
-            return ApiResult.fail("fileMd5不能为空");
         }else{
-//            ArrayList<Integer> uploadedChunks = new ArrayList<>();
-//            if(md5_chunkpath_map.get(fileMd5) != null){
-//                String[] tmpPathArr = md5_chunkpath_map.get(fileMd5);
-//                for(int i = 0;i < tmpPathArr.length;i++){
-//                    if(tmpPathArr[i] != null){
-//                        uploadedChunks.add(i+1);
-//                    }
-//                }
-//            }
             int currentChunk = 0;
-            String rcchunk = RedisUtil.getString("Uploading:file:chunkCurr:"+fileMd5);
+            String rcchunk = RedisUtil.getString("Uploading:file:chunkCurr:"+uploadChunk.getFileMd5());
             if(StrUtil.isNotEmpty(rcchunk)){
                 currentChunk = Convert.toInt(rcchunk);
             }
-
             resultObj.put("uploadedChunks",currentChunk);
+            Integer[] uploadedArr = UpLoadRedisUtils.getCachedIndexs(uploadChunk.getFileMd5());
+            System.out.println(Arrays.toString(uploadedArr));
             return ApiResult.success(resultObj);
         }
     }
@@ -364,8 +350,9 @@ public class ChunkUpload {
 
     @PostMapping("/upload")
     @ResponseBody
-    ApiResult upload(@RequestParam Map<String, Object> paramMap, HttpServletRequest request) throws IOException {
-        return importSeq(paramMap,request);
+    ApiResult upload(UploadChunk uploadChunk, HttpServletRequest request) throws IOException {
+        uploadChunk.setChunk(uploadChunk.getChunk()-1);
+        return importSeq(uploadChunk,request);
     }
 
 //    /**
@@ -602,53 +589,42 @@ public class ChunkUpload {
 
     private static Map<String,Boolean[]> FILEMD5_CHUNKSARR_MAP = new HashMap<>();
 
-    private ApiResult importSeq(Map<String, Object> paramMap,HttpServletRequest request){
-
-//        log.info("============================将请求中文件流转存，并整理入参开始===========================================");
-        String fileName = (String) paramMap.get("fileName");
-        String fileMd5 = (String) paramMap.get("fileMd5");
-        Integer chunks = Integer.parseInt((String) paramMap.get("chunks"));
-        Integer chunk = Integer.parseInt(((String) paramMap.get("chunk")))-1;
-        Long fileSize = Long.parseLong((String)paramMap.get("fileSize")) ;
-        Long chunkSize = Long.parseLong((String)paramMap.get("chunkSize"));
-
+    private ApiResult importSeq(UploadChunk uploadChunk,HttpServletRequest request){
         List<MultipartFile> files = ((MultipartHttpServletRequest) request).getFiles("file");
         MultipartFile file = null;
         if(files.size() > 0){
             file = files.get(0);
         }else{
-//            log.info("在请求中没有获取到任何文件流，importSeq()方法执行结束！");
+            log.info("在请求中没有获取到任何文件流，importSeq()方法执行结束！");
             return ApiResult.fail("没有上传任何文件！");
         }
         String chunkTmpPath = "";
-        UploadChunk uploadChunk = new UploadChunk(fileName, fileMd5, chunks, chunk, fileSize, chunkSize, chunkTmpPath);
-        if(checkChunkExist(uploadChunk)){
-            log.info("文件名："+fileName+"的第：["+chunk+"]已经上传过了!");
+        uploadChunk.setChunkTmpPath("");
+        if(UpLoadRedisUtils.hasCached(uploadChunk)){
+            log.info("文件名："+uploadChunk.getFileName()+"的第：["+uploadChunk.getChunk()+"]已经上传过了!");
             return ApiResult.success("该文件已经上传过！");
         }
+
         try {
-            chunkTmpPath = tmpMdbFile(file.getInputStream(),FileUtil.extName(fileName)+chunk+".tmp");
+            chunkTmpPath = tmpMdbFile(file.getInputStream(),
+                    FileUtil.extName(uploadChunk.getFileName())+uploadChunk.getChunk()+".tmp");
             uploadChunk.setChunkTmpPath(chunkTmpPath);
+            UpLoadRedisUtils.addToCachedList(uploadChunk);
         } catch (IOException e) {
             e.printStackTrace();
         }
 
-//        log.info("============================将请求中文件流转存，并整理入参结束===========================================");
-
-//        log.info("===============================开启异步线程，处理upLoadChunk开始===============================");
         Future<UploadChunk> handleResult = null;
         try {
             handleResult = uploadChunkExcutor.dealWith(uploadChunk);
-//              uploadChunkExcutor.dealWith(uploadChunk);
             uploadChunk = handleResult.get();
         } catch (InterruptedException e) {
             uploadChunk.setStatus(-1);
-//            log.info("线程被打断，第：[" + uploadChunk.getChunk() + "]块上传被终止" + e.getMessage());
+            log.info("线程被打断，第：[" + uploadChunk.getChunk() + "]块上传被终止" + e.getMessage());
         }catch (ExecutionException e){
             uploadChunk.setStatus(-2);
             log.info("线程执行中出现异常，第：[" + uploadChunk.getChunk() + "]块上传被终止" + e.getMessage());
         }
-//        log.info("===============================开启异步线程，处理upLoadChunk结束===============================");
 
         return ApiResult.success(uploadChunk);
     }
@@ -658,32 +634,34 @@ public class ChunkUpload {
      * @param uploadChunk
      * @return
      */
+//    private Boolean checkChunkExist(UploadChunk uploadChunk) {
+//        boolean result = false;
+//        String fileName = uploadChunk.getFileName();
+//        String fileMd5 = uploadChunk.getFileMd5();
+//        int chunks = uploadChunk.getChunks();
+//        int chunk = uploadChunk.getChunk();
+//        if(FILEMD5_CHUNKSARR_MAP.get(fileMd5) == null){
+//            Boolean[] isExist = new Boolean[chunks];
+//            for(int i = 0;i < isExist.length;i++){
+//                isExist[i] = false;
+//            }
+//            isExist[chunk] = true;
+//            FILEMD5_CHUNKSARR_MAP.put(fileMd5,isExist);
+////            log.info("文件："+fileName+"的第：["+chunk+"]转存完毕！");
+//        }else{
+//            if(FILEMD5_CHUNKSARR_MAP.get(fileMd5)[chunk]){
+//                log.info("文件："+fileName+"的第：["+chunk+"]块已经上传过了！");
+//                result = true;
+//            }else{
+//                FILEMD5_CHUNKSARR_MAP.get(fileMd5)[chunk] = true;
+////                log.info("文件："+fileName+"的第：["+chunk+"]转存完毕！");
+//            }
+//        }
+//        return result;
+//    }
     private Boolean checkChunkExist(UploadChunk uploadChunk) {
-        boolean result = false;
-        String fileName = uploadChunk.getFileName();
-        String fileMd5 = uploadChunk.getFileMd5();
-        int chunks = uploadChunk.getChunks();
-        int chunk = uploadChunk.getChunk();
-        if(FILEMD5_CHUNKSARR_MAP.get(fileMd5) == null){
-            Boolean[] isExist = new Boolean[chunks];
-            for(int i = 0;i < isExist.length;i++){
-                isExist[i] = false;
-            }
-            isExist[chunk] = true;
-            FILEMD5_CHUNKSARR_MAP.put(fileMd5,isExist);
-//            log.info("文件："+fileName+"的第：["+chunk+"]转存完毕！");
-        }else{
-            if(FILEMD5_CHUNKSARR_MAP.get(fileMd5)[chunk]){
-                log.info("文件："+fileName+"的第：["+chunk+"]块已经上传过了！");
-                result = true;
-            }else{
-                FILEMD5_CHUNKSARR_MAP.get(fileMd5)[chunk] = true;
-//                log.info("文件："+fileName+"的第：["+chunk+"]转存完毕！");
-            }
-        }
-        return result;
+        return UpLoadRedisUtils.hasCached(uploadChunk);
     }
-
 
     /**
      * Tomcat 获得临时文件转存路径

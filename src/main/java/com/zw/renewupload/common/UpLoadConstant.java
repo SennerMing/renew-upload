@@ -1,20 +1,18 @@
 package com.zw.renewupload.common;
 
 public class UpLoadConstant {
-    private UpLoadConstant() {
 
-    }
 
     private  final static  String uploading="Uploading:";
     private final  static  String lock=uploading+"lock:";
     private  final  static String file=uploading+"file:";
     //当前所有锁(用在不同用户的上传前或重传前对整个文件的锁)
-    public  final static  String  currLocks=lock+"currLocks:";
+    public final static String  currLocks=lock+"currLocks:";
     //当前锁的拥有者
-    public  final static  String  lockOwner=lock+"lockOwner:";
+    public final static String  lockOwner=lock+"lockOwner:";
 
     //当前文件传输到第几块
-    public final  static  String chunkCurr=file+"chunkCurr:";
+    public final static  String chunkCurr=file+"chunkCurr:";
 
     //当前文件上传到fastdfs路径
     public final static String fastDfsPath=file+"fastDfsPath:";
@@ -35,5 +33,9 @@ public class UpLoadConstant {
 
     public final static  String historyUpload="historyUpload:";
 
+    public final static String cached = uploading+"Cached:";
+
+    private UpLoadConstant() {
+    }
 
 }

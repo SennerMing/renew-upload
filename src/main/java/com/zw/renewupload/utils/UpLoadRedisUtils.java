@@ -1,12 +1,18 @@
 package com.zw.renewupload.utils;
 
+import cn.hutool.core.collection.CollUtil;
 import cn.hutool.core.convert.Convert;
 import cn.hutool.core.util.StrUtil;
+import cn.hutool.json.JSONObject;
 import cn.hutool.json.JSONUtil;
 import com.zw.renewupload.common.FileResult;
 import com.zw.renewupload.common.RedisUtil;
 import com.zw.renewupload.common.UpLoadConstant;
 import com.zw.renewupload.entity.UploadChunk;
+import org.apache.tomcat.util.http.fileupload.UploadContext;
+
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * @ClassName: UpLoadRedisUtils
@@ -121,6 +127,7 @@ public class UpLoadRedisUtils {
                 UpLoadConstant.fastGroupPath+fileMd5,
                 UpLoadConstant.fastDfsPath+fileMd5,
                 UpLoadConstant.historyUpload+fileMd5,
+                UpLoadConstant.cached+fileMd5
         });
     }
 
@@ -129,5 +136,105 @@ public class UpLoadRedisUtils {
         //redis完成列表信息加入redis中（Uploading:+completedList）
         RedisUtil.rpush(UpLoadConstant.completedList, JSONUtil.toJsonStr(uploadChunk));
     }
+
+
+    /**
+     * 检查文件是否上传完毕，如果上传完毕则返回完成上传的文件信息，统一返回格式
+     * @param fileMd5
+     * @return
+     */
+    public static UploadChunk isCompleted(String fileMd5){
+        UploadChunk uploadChunk = new UploadChunk();
+        uploadChunk.setStatus(0);  //默认为0，表示没有完成
+        List<String> completedList = RedisUtil.getListAll(UpLoadConstant.completedList);
+        if (CollUtil.isNotEmpty(completedList)){
+            for (String completedObjStr: completedList){
+                JSONObject completedObj = JSONUtil.parseObj(completedObjStr);
+                if(completedObj.getStr("fileMd5").equals(fileMd5)){
+                    uploadChunk = JSONUtil.toBean(completedObj, uploadChunk.getClass());
+                    uploadChunk.setStatus(1);
+                }
+            }
+        }
+        return uploadChunk;
+    }
+
+    //=================================================================================
+    //                      下面是将缓存的文件记录到Redis中
+    //=================================================================================
+
+    /**
+     * 将已经转存到Tmp目录的当前块信息，添加到已上传列表
+     * @param uploadChunk
+     */
+    public static void addToCachedList(UploadChunk uploadChunk){
+        RedisUtil.rpush(UpLoadConstant.cached +uploadChunk.getFileMd5(),JSONUtil.toJsonStr(uploadChunk));
+    }
+
+    /**
+     * 判断当前块信息是否已经缓存
+     * @param uploadChunk
+     * @return
+     */
+    public static boolean hasCached(UploadChunk uploadChunk){
+        boolean result = false;
+        List<String> cachedList = RedisUtil.getListAll(UpLoadConstant.cached+uploadChunk.getFileMd5());
+        if (CollUtil.isNotEmpty(cachedList)){
+            for (String cachedChunkStr: cachedList){
+                JSONObject cachedChunk = JSONUtil.parseObj(cachedChunkStr);
+                if(cachedChunk.getInt("chunk").equals(uploadChunk.getChunk())){
+                    result = true;
+                }
+            }
+        }
+        return result;
+    }
+
+    public static void cacheTheChunk(UploadChunk uploadChunk){
+        boolean result = false;
+        result = hasCached(uploadChunk);
+        if(!result){
+           UpLoadRedisUtils.addToCachedList(uploadChunk);
+        }
+    }
+
+
+    /**
+     * 获得已经上传过的信息列表
+     * @param fileMd5
+     * @return
+     */
+    public static List<UploadChunk> getCachedInfo(String fileMd5){
+        List<UploadChunk> cachedList = new ArrayList<>();
+        List<String> cachedStrList = RedisUtil.getListAll(UpLoadConstant.cached+fileMd5);
+        if (CollUtil.isNotEmpty(cachedStrList)){
+            for (String cachedChunkStr: cachedStrList){
+                cachedList.add(JSONUtil.toBean(cachedChunkStr, UploadChunk.class));
+            }
+        }
+        return cachedList;
+    }
+
+    /**
+     * 获得已经上传过的信息列表
+     * @param fileMd5
+     * @return
+     */
+    public static Integer[] getCachedIndexs(String fileMd5){
+        List<Integer> cachedList = new ArrayList<>();
+        List<String> cachedStrList = RedisUtil.getListAll(UpLoadConstant.cached+fileMd5);
+        if (CollUtil.isNotEmpty(cachedStrList)){
+            for (String cachedChunkStr: cachedStrList){
+                JSONObject cachedChunkObj = JSONUtil.parseObj(cachedChunkStr);
+                int chunkIndex = cachedChunkObj.getInt("chunk");
+                cachedList.add(chunkIndex);
+            }
+        }
+        Integer[] result = new Integer[cachedList.size()];
+        cachedList.toArray(result);
+        return result;
+    }
+
+
 
 }

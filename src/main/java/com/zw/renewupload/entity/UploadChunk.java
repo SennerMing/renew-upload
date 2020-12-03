@@ -17,7 +17,7 @@ public class UploadChunk {
     private String chunkTmpPath;
 
     private Integer status = 0;
-    private String viewPath;
+    private String filePath;
 
     public UploadChunk() {
     }
@@ -97,11 +97,11 @@ public class UploadChunk {
         this.status = status;
     }
 
-    public String getViewPath() {
-        return viewPath;
+    public String getFilePath() {
+        return filePath;
     }
 
-    public void setViewPath(String viewPath) {
-        this.viewPath = viewPath;
+    public void setFilePath(String filePath) {
+        this.filePath = filePath;
     }
 }

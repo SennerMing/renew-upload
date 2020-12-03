@@ -200,7 +200,7 @@ public class FileRedisUtil {
                     checkFileResult.setName(obj.getStr("fileName"));
                     checkFileResult.setFileMd5(obj.getStr("fileMd5"));
                     checkFileResult.setTotalSize(obj.getLong("fileSize"));
-                    checkFileResult.setViewPath(obj.getStr("viewPath"));
+                    checkFileResult.setViewPath(obj.getStr("filePath"));
                     return ApiResult.success(checkFileResult);
                 }
             }
