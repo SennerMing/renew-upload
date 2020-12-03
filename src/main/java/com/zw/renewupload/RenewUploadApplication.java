@@ -22,7 +22,7 @@ import javax.servlet.MultipartConfigElement;
 @Import(FdfsClientConfig.class)
 //解决jmx注册冲突
 @EnableMBeanExport(registration = RegistrationPolicy.IGNORE_EXISTING)
-@EnableDiscoveryClient
+//@EnableDiscoveryClient
 public class RenewUploadApplication {
 
 	public static void main(String[] args) {

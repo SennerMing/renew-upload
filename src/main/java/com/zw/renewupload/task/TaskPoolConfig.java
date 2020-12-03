@@ -18,11 +18,11 @@ class TaskPoolConfig {
         //根据ThreadPoolTaskExecutor 创建建线程池
         ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
         //为线程设置初始的线程数量 5条线程
-        executor.setCorePoolSize(1);
+        executor.setCorePoolSize(20);
         //为线程设置最大的线程数量 10条线程
-        executor.setMaxPoolSize(1);
+        executor.setMaxPoolSize(20);
         //为任务队列设置最大 任务数量
-        executor.setQueueCapacity(200);
+        executor.setQueueCapacity(30);
         //设置 超出初始化线程的 存在时间为60秒
         //也就是 如果现有线程数超过5 则会对超出的空闲线程 设置摧毁时间 也就是60秒
         executor.setKeepAliveSeconds(60);

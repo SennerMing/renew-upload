@@ -171,6 +171,24 @@ public class FileRedisUtil {
         });
     }
 
+//    public static ApiResult isCompleted(String fileMd5){
+//        CheckFileResult checkFileResult = new CheckFileResult();
+//        //模拟从mysql中查询文件表的md5,这里从redis里查询
+//        List<String> fileList = RedisUtil.getListAll(UpLoadConstant.completedList);
+//        if (CollUtil.isNotEmpty(fileList)){
+//            for (String e:fileList){
+//                JSONObject obj=JSONUtil.parseObj(e);
+//                if (obj.get("md5").equals(fileMd5)){
+//                    checkFileResult.setName(obj.getStr("name"));
+//                    checkFileResult.setFileMd5(obj.getStr("md5"));
+//                    checkFileResult.setTotalSize(obj.getLong("length"));
+//                    checkFileResult.setViewPath(obj.getStr("url"));
+//                    return ApiResult.success(checkFileResult);
+//                }
+//            }
+//        }
+//        return ApiResult.fail();
+//    }
     public static ApiResult isCompleted(String fileMd5){
         CheckFileResult checkFileResult = new CheckFileResult();
         //模拟从mysql中查询文件表的md5,这里从redis里查询
@@ -178,11 +196,11 @@ public class FileRedisUtil {
         if (CollUtil.isNotEmpty(fileList)){
             for (String e:fileList){
                 JSONObject obj=JSONUtil.parseObj(e);
-                if (obj.get("md5").equals(fileMd5)){
-                    checkFileResult.setName(obj.getStr("name"));
-                    checkFileResult.setFileMd5(obj.getStr("md5"));
-                    checkFileResult.setTotalSize(obj.getLong("length"));
-                    checkFileResult.setViewPath(obj.getStr("url"));
+                if (obj.get("fileMd5").equals(fileMd5)){
+                    checkFileResult.setName(obj.getStr("fileName"));
+                    checkFileResult.setFileMd5(obj.getStr("fileMd5"));
+                    checkFileResult.setTotalSize(obj.getLong("fileSize"));
+                    checkFileResult.setViewPath(obj.getStr("viewPath"));
                     return ApiResult.success(checkFileResult);
                 }
             }

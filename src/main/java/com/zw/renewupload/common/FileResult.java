@@ -11,6 +11,8 @@ public class FileResult {
     //文件大小
     private Long length;
 
+
+
     public String getUrl() {
         return url;
     }

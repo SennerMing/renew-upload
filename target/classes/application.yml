@@ -1,23 +1,23 @@
-logging:
-  config: classpath:logback-spring.xml
-  file: logs/${spring.application.name}.log
-  level:
-    com:
-      zw: debug
-server:
-  port: 8086
-  max-http-header-size: 4048576
-
-eureka:
-  instance:
-    prefer-ip-address: true
-    instance-id: ${spring.application.name}:${spring.cloud.client.ipAddress}:${spring.application.instance_id:${server.port}}
-    #每间隔20s，向服务端发送一次心跳，证明自己依然”存活“
-    lease-renewal-interval-in-seconds: 20
-    #告诉服务端，如果我60s之内没有给你发心跳，就代表我“死”了，将我踢出掉
-    lease-expiration-duration-in-seconds: 60
-  client:
-    service-url:
-      defaultZone: http://192.168.18.12:8761/eureka/,http://192.168.18.13:8761/eureka/,http://192.168.18.14:8761/eureka/
-
-
+#logging:
+#  config: classpath:logback-spring.xml
+#  file: logs/${spring.application.name}.log
+#  level:
+#    com:
+#      zw: debug
+#server:
+#  port: 8086
+#  max-http-header-size: 4048576
+#
+#eureka:
+#  instance:
+#    prefer-ip-address: true
+#    instance-id: ${spring.application.name}:${spring.cloud.client.ipAddress}:${spring.application.instance_id:${server.port}}
+#    #每间隔20s，向服务端发送一次心跳，证明自己依然”存活“
+#    lease-renewal-interval-in-seconds: 20
+#    #告诉服务端，如果我60s之内没有给你发心跳，就代表我“死”了，将我踢出掉
+#    lease-expiration-duration-in-seconds: 60
+#  client:
+#    service-url:
+#      defaultZone: http://192.168.18.12:8761/eureka/,http://192.168.18.13:8761/eureka/,http://192.168.18.14:8761/eureka/
+#
+#
