@@ -316,15 +316,16 @@ public class ChunkUpload {
     }
 
 
-
+    /**
+     * v1.3上传之前的检查
+     * @param uploadChunk
+     * @param request
+     * @return
+     * @throws IOException
+     */
     @GetMapping("/uploadCheck")
     @ResponseBody
     ApiResult uploadCheck(UploadChunk uploadChunk, HttpServletRequest request) throws IOException {
-
-//        String fileName = (String) paramMap.get("fileName");
-//        String fileMd5 = (String) paramMap.get("fileMd5");
-//        Integer chunks = Integer.parseInt((String) paramMap.get("chunks"));
-//        Long fileSize = Long.parseLong((String)paramMap.get("fileSize")) ;
 
         JSONObject resultObj = new JSONObject();
         resultObj.put("fileName",uploadChunk.getFileName());
@@ -348,6 +349,13 @@ public class ChunkUpload {
     }
 
 
+    /**
+     * v1.3上传接口
+     * @param uploadChunk
+     * @param request
+     * @return
+     * @throws IOException
+     */
     @PostMapping("/upload")
     @ResponseBody
     ApiResult upload(UploadChunk uploadChunk, HttpServletRequest request) throws IOException {
@@ -355,240 +363,12 @@ public class ChunkUpload {
         return importSeq(uploadChunk,request);
     }
 
-//    /**
-//     * @Auther LXR
-//     * @Date 2020年11月20日15点19分
-//     * 按顺序将文件流写入FastDFS,该接口须使用到[md5_filestrem_map]与redis；
-//     *  @see ChunkUpload#md5_filestrem_map
-//     *  @param paramMap
-//     *      fileName: 文件名（带类型）
-//     *      fileMd5: cd7c2e5256b41e7d6a8a481ed3012cf2（文件的MD5码）
-//     *      chunks: 50 (分片的总数)
-//     *      chunk: 42 （当前上传的分片Index）
-//     *      fileSize: 102804263 (文件的总大小)
-//     *      chunkSize: 2048000 (当前上传块的大小)
-//     *      file: (binary) (文件流)
-//     * @param request
-//     * @return
-//     */
-//    private ApiResult importSeq(Map<String, Object> paramMap,HttpServletRequest request){
-//        /**
-//         * 大体思路：
-//         *  判断 [md5_filestream_map]中是否存在该[fileMd5]的文件流数组[MultipartFile[]]
-//         *     如果存在，则判断当前 [chunk]是否为该上传的文件流
-//         *        如果是该上传的文件，则直接调用[appendFile()]
-//         *        如果不是，则放入该放入对应的MultipartFile[chunk-1]
-//         *     如果不存在，则判断当前[chunk]是否为1
-//         *        如果是1，则调用[appendFile()]
-//         *        如果不是1，则将该文件流放入对应的[MultipartFile[chunk-1]]
-//         *        开启一个新的线程去处理这个[md5_filestream_map]中[fileMd5]的[MultipartFile[]]
-//         *
-//         *  2020年11月20日10点11分对大体思路进行实现时遇到了很多问题，上传文件功能与[是否为当前可上传块]的耦合太严重
-//         *  实现中出现重复判断，所以有将缓存与上传功能分离的想法。
-//         *
-//         * 思路整理：
-//         *     2020年11月21日10点17分
-//         *     思路一：
-//         *     1.无论数据是否为当前可以写入，都先将当前[chunk]的[MultipartFile]存入[md5_filestream_map]中
-//         *     2.用异步线程的方式去处理[md5_filestrem_map]中的[MultipartFile]
-//         *
-//         *     思路二：
-//         *     不使用异步线程
-//         *     1.同上
-//         *     2.调用上传函数[uploadLoop()]，该函数的主要功能与异步线程的执行主体大致相同
-//         *
-//         *     思路一与思路二存在的差异：
-//         *     效率方面，暂且以为异步线程的方式效率高一些，还有待验证
-//         *
-//         * Q&A：
-//         *     Q:当前请求的append操作会不会与独立线程中的append操作冲突
-//         *     A:不会，因为当前请求如果正好是需要上传的chunk文件，则在当前请求中直接入库，再进行Redis中chunk的更新
-//         *       而独立线程中的append操作，虽然也在轮询该chunk，但是 md5_filestrem_map中该MD5对应的MultipartFile[chunk-1]为空,
-//         *       不进行入库操作
-//         */
-//
-//        String fileName = (String) paramMap.get("fileName");
-//        String fileMd5 = (String) paramMap.get("fileMd5");
-//        Integer chunks = Integer.parseInt((String) paramMap.get("chunks"));
-//        Integer chunk = Integer.parseInt(((String) paramMap.get("chunk")))-1;
-//        Long fileSize = Long.parseLong((String)paramMap.get("fileSize")) ;
-//        Long chunkSize = Long.parseLong((String)paramMap.get("chunkSize"));
-//
-//        List<MultipartFile> files = ((MultipartHttpServletRequest) request).getFiles("file");
-//        MultipartFile file = null;
-//        if(files.size() > 0){
-//            file = files.get(0);
-//        }else{
-//            return ApiResult.fail("没有上传任何文件！");
-//        }
-//
-//        Future<CheckFileResult> future = null;
-//        //将文件转存到自己指定的地方
-//        String chunkFilePath = null;
-//        try {
-//            chunkFilePath = tmpMdbFile(file.getInputStream(),FileUtil.extName(fileName)+chunk+".tmp");
-//        } catch (IOException e) {
-//            e.printStackTrace();
-//        }
-//
-//        FileRedisUtil fileRedisUtil = new FileRedisUtil(fileMd5,fileName,fileSize,chunks,chunk,chunkSize);
-//        if(md5_chunkpath_map.get(fileRedisUtil.getFileMd5()) == null){
-//
-//            String[] multipartFiles = new String[fileRedisUtil.getChunks()];
-//            multipartFiles[chunk] = chunkFilePath;
-//            md5_chunkpath_map.put(fileRedisUtil.getFileMd5(),multipartFiles);
-//
-//            try {
-//                log.info("第一次！将临时文件路径存入了md5_chunkpath_map中[块："+fileRedisUtil.getChunk()+"],文件路径："+chunkFilePath);
-//                md5_asyncresult_map.put(fileRedisUtil.getFileMd5(),myTaskExecutor.run(fileRedisUtil,timeout));
-//            } catch (InterruptedException e) {
-//                e.printStackTrace();
-//            }
-//        }else{
-//
-//            String[] multipartFiles = md5_chunkpath_map.get(fileRedisUtil.getFileMd5());
-//            multipartFiles[chunk] = chunkFilePath;
-//            log.info("非第一次！将临时文件路径存入了md5_chunkpath_map中[块："+fileRedisUtil.getChunk()+"],文件路径："+chunkFilePath);
-//            if(chunk == chunks-1 && (md5_asyncresult_map.get(fileRedisUtil.getFileMd5()) != null)){
-//                try {
-//                    return ApiResult.success(md5_asyncresult_map.get(fileRedisUtil.getFileMd5()).get());
-//                } catch (InterruptedException e) {
-//                    e.printStackTrace();
-//                } catch (ExecutionException e) {
-//                    e.printStackTrace();
-//                }
-//            }
-//        }
-//        return ApiResult.success("Uploading...");
-//    }
-
-
     /**
-     * @Auther LXR
-     * @Date 2020年11月20日15点19分
-     * 按顺序将文件流写入FastDFS,该接口须使用到[md5_filestrem_map]与redis；
-     *  @see ChunkUpload#md5_filestrem_map
-     *  @param paramMap
-     *      fileName: 文件名（带类型）
-     *      fileMd5: cd7c2e5256b41e7d6a8a481ed3012cf2（文件的MD5码）
-     *      chunks: 50 (分片的总数)
-     *      chunk: 42 （当前上传的分片Index）
-     *      fileSize: 102804263 (文件的总大小)
-     *      chunkSize: 2048000 (当前上传块的大小)
-     *      file: (binary) (文件流)
+     * v1.3每次请求的主要处理逻辑
+     * @param uploadChunk
      * @param request
      * @return
      */
-//    private ApiResult importSeq(Map<String, Object> paramMap,HttpServletRequest request){
-//        /**
-//         * 大体思路：
-//         *  判断 [md5_filestream_map]中是否存在该[fileMd5]的文件流数组[MultipartFile[]]
-//         *     如果存在，则判断当前 [chunk]是否为该上传的文件流
-//         *        如果是该上传的文件，则直接调用[appendFile()]
-//         *        如果不是，则放入该放入对应的MultipartFile[chunk-1]
-//         *     如果不存在，则判断当前[chunk]是否为1
-//         *        如果是1，则调用[appendFile()]
-//         *        如果不是1，则将该文件流放入对应的[MultipartFile[chunk-1]]
-//         *        开启一个新的线程去处理这个[md5_filestream_map]中[fileMd5]的[MultipartFile[]]
-//         *
-//         *  2020年11月20日10点11分对大体思路进行实现时遇到了很多问题，上传文件功能与[是否为当前可上传块]的耦合太严重
-//         *  实现中出现重复判断，所以有将缓存与上传功能分离的想法。
-//         *
-//         * 思路整理：
-//         *     2020年11月21日10点17分
-//         *     思路一：
-//         *     1.无论数据是否为当前可以写入，都先将当前[chunk]的[MultipartFile]存入[md5_filestream_map]中
-//         *     2.用异步线程的方式去处理[md5_filestrem_map]中的[MultipartFile]
-//         *
-//         *     思路二：
-//         *     不使用异步线程
-//         *     1.同上
-//         *     2.调用上传函数[uploadLoop()]，该函数的主要功能与异步线程的执行主体大致相同
-//         *
-//         *     思路一与思路二存在的差异：
-//         *     效率方面，暂且以为异步线程的方式效率高一些，还有待验证
-//         *
-//         * Q&A：
-//         *     Q:当前请求的append操作会不会与独立线程中的append操作冲突
-//         *     A:不会，因为当前请求如果正好是需要上传的chunk文件，则在当前请求中直接入库，再进行Redis中chunk的更新
-//         *       而独立线程中的append操作，虽然也在轮询该chunk，但是 md5_filestrem_map中该MD5对应的MultipartFile[chunk-1]为空,
-//         *       不进行入库操作
-//         */
-//
-//        String fileName = (String) paramMap.get("fileName");
-//        String fileMd5 = (String) paramMap.get("fileMd5");
-//        Integer chunks = Integer.parseInt((String) paramMap.get("chunks"));
-//        Integer chunk = Integer.parseInt(((String) paramMap.get("chunk")))-1;
-//        Long fileSize = Long.parseLong((String)paramMap.get("fileSize")) ;
-//        Long chunkSize = Long.parseLong((String)paramMap.get("chunkSize"));
-//
-//        List<MultipartFile> files = ((MultipartHttpServletRequest) request).getFiles("file");
-//        MultipartFile file = null;
-//        if(files.size() > 0){
-//            file = files.get(0);
-//        }else{
-//            return ApiResult.fail("没有上传任何文件！");
-//        }
-//
-//        Future<CheckFileResult> future = null;
-//        //将文件转存到自己指定的地方
-//        String chunkFilePath = null;
-//        try {
-//            chunkFilePath = tmpMdbFile(file.getInputStream(),FileUtil.extName(fileName)+chunk+".tmp");
-//        } catch (IOException e) {
-//            e.printStackTrace();
-//        }
-//
-//        FileRedisUtil fileRedisUtil = new FileRedisUtil(fileMd5,fileName,fileSize,chunks,chunk,chunkSize);
-//        String[] multipartFiles = null;
-//
-//        synchronized (this){
-//            Boolean isFirst = false;
-//            if(md5_chunkpath_map.get(fileRedisUtil.getFileMd5()) == null){
-//                isFirst = true;
-//                multipartFiles = new String[fileRedisUtil.getChunks()];
-//                //log.info("第一次！将临时文件路径存入了md5_chunkpath_map中[块："+fileRedisUtil.getChunk()+"],文件路径："+chunkFilePath);
-//            }else{
-//                multipartFiles = md5_chunkpath_map.get(fileRedisUtil.getFileMd5());
-//                //log.info("非第一次！将临时文件路径存入了md5_chunkpath_map中[块："+fileRedisUtil.getChunk()+"],文件路径："+chunkFilePath);
-//            }
-//            multipartFiles[chunk] = chunkFilePath;
-//
-//            if(isFirst){
-//                md5_chunkpath_map.put(fileRedisUtil.getFileMd5(),multipartFiles);
-//                try {
-//                    md5_asyncresult_map.put(fileRedisUtil.getFileMd5(),myTaskExecutor.run(fileRedisUtil,timeout));
-//                } catch (InterruptedException e) {
-//                    e.printStackTrace();
-//                }
-//            }else{
-//                if(md5_asyncresult_map.get(fileRedisUtil.getFileMd5()) == null){
-//                    try {
-//                        md5_asyncresult_map.put(fileRedisUtil.getFileMd5(),myTaskExecutor.run(fileRedisUtil,timeout));
-//                    } catch (InterruptedException e) {
-//                        e.printStackTrace();
-//                    }
-//                }
-//            }
-//            log.info("当前第："+(chunk+1)+"块,总块数："+chunks+",线程执行状态(是否已完成)："+md5_asyncresult_map.get(fileRedisUtil.getFileMd5()).isDone());
-//            if(chunk == chunks-1 || md5_asyncresult_map.get(fileRedisUtil.getFileMd5()).isDone()){
-//                try {
-//                    CheckFileResult uploadResult = md5_asyncresult_map.get(fileRedisUtil.getFileMd5()).get();
-//                    return ApiResult.success(uploadResult);
-//                } catch (InterruptedException e) {
-//                    e.printStackTrace();
-//                } catch (ExecutionException e) {
-//                    e.printStackTrace();
-//                }
-//            }
-//        }
-//
-//        return ApiResult.success("Uploading...");
-//    }
-
-
-    private static Map<String,Boolean[]> FILEMD5_CHUNKSARR_MAP = new HashMap<>();
-
     private ApiResult importSeq(UploadChunk uploadChunk,HttpServletRequest request){
         List<MultipartFile> files = ((MultipartHttpServletRequest) request).getFiles("file");
         MultipartFile file = null;
@@ -627,40 +407,6 @@ public class ChunkUpload {
         }
 
         return ApiResult.success(uploadChunk);
-    }
-
-    /**
-     * 根据FileMD5检查文件chunk是否已经上传
-     * @param uploadChunk
-     * @return
-     */
-//    private Boolean checkChunkExist(UploadChunk uploadChunk) {
-//        boolean result = false;
-//        String fileName = uploadChunk.getFileName();
-//        String fileMd5 = uploadChunk.getFileMd5();
-//        int chunks = uploadChunk.getChunks();
-//        int chunk = uploadChunk.getChunk();
-//        if(FILEMD5_CHUNKSARR_MAP.get(fileMd5) == null){
-//            Boolean[] isExist = new Boolean[chunks];
-//            for(int i = 0;i < isExist.length;i++){
-//                isExist[i] = false;
-//            }
-//            isExist[chunk] = true;
-//            FILEMD5_CHUNKSARR_MAP.put(fileMd5,isExist);
-////            log.info("文件："+fileName+"的第：["+chunk+"]转存完毕！");
-//        }else{
-//            if(FILEMD5_CHUNKSARR_MAP.get(fileMd5)[chunk]){
-//                log.info("文件："+fileName+"的第：["+chunk+"]块已经上传过了！");
-//                result = true;
-//            }else{
-//                FILEMD5_CHUNKSARR_MAP.get(fileMd5)[chunk] = true;
-////                log.info("文件："+fileName+"的第：["+chunk+"]转存完毕！");
-//            }
-//        }
-//        return result;
-//    }
-    private Boolean checkChunkExist(UploadChunk uploadChunk) {
-        return UpLoadRedisUtils.hasCached(uploadChunk);
     }
 
     /**

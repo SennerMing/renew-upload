@@ -4,14 +4,10 @@ import cn.hutool.core.io.FileUtil;
 import cn.hutool.json.JSONUtil;
 import com.github.tobato.fastdfs.domain.StorePath;
 import com.zw.renewupload.append.DefectiveAppendFileStorageClient;
-import com.zw.renewupload.append.FileRedisUtil;
-import com.zw.renewupload.common.CheckFileResult;
-import com.zw.renewupload.common.FileResult;
 import com.zw.renewupload.entity.UploadChunk;
 import com.zw.renewupload.utils.UpLoadRedisUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.scheduling.annotation.AsyncResult;
 import org.springframework.stereotype.Component;
@@ -34,6 +30,12 @@ public class UploadChunkExcutor {
     @Autowired
     private DefectiveAppendFileStorageClient defectiveClient;
 
+    /**
+     * v1.3异步线程主要的处理逻辑
+     * @param uploadChunk
+     * @return
+     * @throws InterruptedException
+     */
     @Async
     public Future<UploadChunk> dealWith(UploadChunk uploadChunk) throws InterruptedException {
         FileInputStream fis = null;
@@ -111,7 +113,6 @@ public class UploadChunkExcutor {
         //未上传完成：
         //  1.更新 [CurrentChunk:当前需要写入的块的Index]
         //  2.记录 [UploadedSize:当前已经上传块的总大小]
-
         isAppended = true;
         if(uploadChunk.getChunk().equals(uploadChunk.getChunks()-1)){
             uploadChunk.setFilePath(upLoadRedisUtils.getGroupPath()+"/"+upLoadRedisUtils.getDistrictPath());
