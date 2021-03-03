@@ -56,7 +56,7 @@ public class UploadChunkExcutor {
                     isAppended = deliverToFastDFS(uploadChunk,fis);
                 }
             }else{
-                if(Thread.currentThread().getPriority() == 0){
+                if(Thread.currentThread().getPriority() == 5){
                     int degree = uploadChunk.getChunks()/10;
                     int priority = 10-(uploadChunk.getChunk()/degree);
                     Thread.currentThread().setPriority(priority==0?(priority+1):priority);
